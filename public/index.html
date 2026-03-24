@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data On AI CoP 관리 시스템</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+  <style>
+    :root {
+      --sidebar-width: 240px;
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --primary-light: #eef2ff;
+    }
+
+    body { background: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
+
+    /* ── 로그인 ── */
+    #loginSection {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      border: none;
+      border-radius: 1.25rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .login-logo { font-size: 2.5rem; color: var(--primary); }
+
+    /* ── 앱 레이아웃 ── */
+    #appSection { display: none; min-height: 100vh; }
+
+    /* 사이드바 */
+    #sidebar {
+      width: var(--sidebar-width);
+      min-height: 100vh;
+      background: linear-gradient(180deg, #312e81 0%, #4f46e5 100%);
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 1000;
+      transition: transform .3s ease;
+    }
+    #sidebar .brand {
+      padding: 1.5rem 1.25rem 1rem;
+      color: #fff;
+      border-bottom: 1px solid rgba(255,255,255,.15);
+    }
+    #sidebar .brand-title { font-size: 1rem; font-weight: 700; line-height: 1.3; }
+    #sidebar .brand-sub { font-size: .72rem; opacity: .7; }
+    #sidebar .nav-link {
+      color: rgba(255,255,255,.75);
+      padding: .6rem 1.25rem;
+      border-radius: .5rem;
+      margin: .15rem .75rem;
+      font-size: .88rem;
+      display: flex; align-items: center; gap: .55rem;
+      transition: background .2s, color .2s;
+    }
+    #sidebar .nav-link:hover,
+    #sidebar .nav-link.active {
+      background: rgba(255,255,255,.18);
+      color: #fff;
+    }
+    #sidebar .nav-link i { font-size: 1.05rem; }
+    #sidebar .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid rgba(255,255,255,.15);
+      color: rgba(255,255,255,.6);
+      font-size: .78rem;
+    }
+
+    /* 메인 콘텐츠 */
+    #mainContent {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    #topbar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: .75rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 900;
+    }
+    .page-content { padding: 1.75rem 1.5rem; flex: 1; }
+
+    /* 카드 공통 */
+    .cop-card {
+      background: #fff;
+      border: none;
+      border-radius: 1rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      padding: 1.4rem;
+      height: 100%;
+    }
+    .cop-card-title {
+      font-size: .82rem;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: .6rem;
+    }
+
+    /* ── 메인 히어로 배너 ── */
+    .hero-banner {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      border-radius: 1.25rem;
+      padding: 2rem 2rem 1.5rem;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .hero-banner::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 200px; height: 200px;
+      background: rgba(255,255,255,.07);
+      border-radius: 50%;
+    }
+    .hero-banner::after {
+      content: '';
+      position: absolute;
+      bottom: -60px; right: 60px;
+      width: 150px; height: 150px;
+      background: rgba(255,255,255,.05);
+      border-radius: 50%;
+    }
+    .hero-greeting { font-size: 1.5rem; font-weight: 700; }
+    .hero-sub { font-size: .9rem; opacity: .8; }
+    .dday-box {
+      background: rgba(255,255,255,.15);
+      border: 2px solid rgba(255,255,255,.35);
+      border-radius: 1rem;
+      padding: .8rem 1.2rem;
+      text-align: center;
+      min-width: 120px;
+      backdrop-filter: blur(4px);
+      position: relative; z-index: 1;
+    }
+    .dday-num { font-size: 2.2rem; font-weight: 900; line-height: 1; letter-spacing: -2px; }
+    .dday-label { font-size: .75rem; opacity: .85; margin-top: .2rem; font-weight: 500; }
+    .dday-action { margin-top: .6rem; }
+
+    /* 모바일: D-Day 가로형 full-width */
+    @media (max-width: 767px) {
+      .dday-box {
+        width: 100%;
+        min-width: unset;
+        padding: .7rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        text-align: left;
+        border-radius: .9rem;
+      }
+      .dday-box .dday-title-label { display: none; }
+      .dday-box .dday-num { font-size: 2rem; margin: 0; }
+      .dday-box .dday-action { margin-top: 0; margin-left: auto; flex-shrink: 0; }
+      .dday-box .dday-action .btn { padding: .35rem .8rem; font-size: .78rem; }
+    }
+
+    /* 빠른 바로가기 */
+    .shortcut-btn {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: .9rem;
+      padding: 1rem .75rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .shortcut-btn:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(79,70,229,.15);
+      color: var(--primary);
+    }
+    .shortcut-icon {
+      width: 44px; height: 44px;
+      border-radius: .75rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      margin: 0 auto .5rem;
+    }
+    .shortcut-label { font-size: .8rem; font-weight: 600; }
+
+    /* 대시보드 stat 카드 */
+    .stat-card { border-radius: 1rem; border: none; }
+    .stat-icon {
+      width: 52px; height: 52px;
+      border-radius: .75rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    /* 내 출석 미니 카드 */
+    .my-attend-ring {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: conic-gradient(#4f46e5 var(--pct), #e2e8f0 0);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .my-attend-inner {
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    /* 출결 배지 */
+    .badge-attend { background: #d1fae5; color: #065f46; }
+    .badge-absent { background: #fee2e2; color: #991b1b; }
+
+    /* 점심 투표 */
+    .vote-bar { height: 8px; border-radius: 4px; }
+    .menu-item { border-radius: .75rem; border: 2px solid #e2e8f0; transition: border-color .2s, background .2s; cursor: pointer; }
+    .menu-item:hover, .menu-item.voted { border-color: var(--primary); background: var(--primary-light); }
+
+    /* 게시판 */
+    .board-row { border-bottom: 1px solid #f1f5f9; padding: .65rem 0; }
+    .board-row:last-child { border-bottom: none; }
+
+    /* 팝업 오버레이 */
+    #noticeOverlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .notice-popup {
+      background: #fff;
+      border-radius: 1.25rem;
+      width: 100%; max-width: 500px;
+      box-shadow: 0 25px 60px rgba(0,0,0,.3);
+      overflow: hidden;
+    }
+    .notice-popup .popup-header {
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+      color: #fff; padding: 1.25rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* 모바일 */
+    @media (max-width: 991px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #mainContent { margin-left: 0; }
+      #sidebarOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 999; }
+      #sidebarOverlay.show { display: block; }
+    }
+
+    /* 회원가입 탭 */
+    #registerTab .form-label { font-size: .87rem; }
+
+    /* 프로그레스 출석률 */
+    .progress { height: 8px; border-radius: 4px; }
+
+    /* 페이지 헤더 */
+    .page-header { margin-bottom: 1.5rem; }
+    .page-header h5 { font-weight: 700; color: #1e293b; margin-bottom: .15rem; }
+    .page-header p { font-size: .85rem; color: #64748b; margin: 0; }
+
+    /* 댓글 */
+    .comment-box { background: #f8fafc; border-radius: .75rem; padding: .85rem 1rem; margin-bottom: .6rem; }
+    .comment-box.sub { background: #eef2ff; margin-left: 1.5rem; }
+
+    /* 모달 */
+    .modal-backdrop-custom {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 1050;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-box {
+      background: #fff;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      width: 100%; max-width: 520px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      margin: 1rem;
+    }
+
+    /* ── AI 도우미 플로팅 버튼 ── */
+    .ai-fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 9990;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      box-shadow: 0 4px 18px rgba(79,70,229,.45);
+      color: #fff;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      transition: transform .2s ease, box-shadow .2s ease;
+      animation: aiFabPulse 3s ease-in-out infinite;
+    }
+    .ai-fab:hover {
+      color: #fff;
+      transform: scale(1.12) translateY(-2px);
+      box-shadow: 0 8px 28px rgba(79,70,229,.65);
+      animation: none;
+    }
+    @keyframes aiFabPulse {
+      0%,100% { box-shadow: 0 4px 18px rgba(79,70,229,.45); }
+      50%      { box-shadow: 0 4px 22px rgba(124,58,237,.7), 0 0 0 6px rgba(79,70,229,.1); }
+    }
+    @media (max-width: 767px) {
+      .ai-fab { bottom: 1.25rem; right: 1.25rem; width: 42px; height: 42px; font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ==================== 로그인 ==================== -->
+<div id="loginSection">
+  <div class="login-card card p-4 p-md-5">
+    <div class="text-center mb-4">
+      <div class="login-logo mb-2">
+        <img src="/images/shinhan-logo.png" alt="신한금융그룹"
+          style="height:52px; object-fit:contain;" />
+      </div>
+      <h4 class="fw-bold text-dark mb-0">Data On AI CoP</h4>
+      <p class="text-muted small mt-1">사내 전공 학습 동호회 관리 시스템</p>
+    </div>
+
+    <ul class="nav nav-pills nav-fill mb-4" id="authTab">
+      <li class="nav-item">
+        <button class="nav-link active" onclick="switchAuth('login')">로그인</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" onclick="switchAuth('register')">회원가입</button>
+      </li>
+    </ul>
+
+    <!-- 로그인 폼 -->
+    <div id="loginTab">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">사번 (ID)</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-person"></i></span>
+          <input type="text" id="loginId" class="form-control" placeholder="사번을 입력하세요" value="EMP001"
+            onkeydown="if(event.key==='Enter') doLogin()" />
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">비밀번호</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-lock"></i></span>
+          <input type="password" id="loginPw" class="form-control" placeholder="비밀번호를 입력하세요" value="1234"
+            onkeydown="if(event.key==='Enter') doLogin()" />
+        </div>
+      </div>
+      <div id="loginError" class="alert alert-danger d-none small py-2"></div>
+      <button class="btn btn-primary w-100 py-2 fw-semibold" onclick="doLogin()">
+        <i class="bi bi-box-arrow-in-right me-1"></i>로그인
+      </button>
+      <p class="text-center text-muted small mt-3 mb-0">테스트: 사번 <strong>EMP001</strong> / PW <strong>1234</strong></p>
+    </div>
+
+    <!-- 회원가입 폼 -->
+    <div id="registerTab" style="display:none;">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">사번</label>
+        <input type="text" id="regId" class="form-control" placeholder="사번 입력" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">성명</label>
+        <input type="text" id="regName" class="form-control" placeholder="이름 입력" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">비밀번호</label>
+        <input type="password" id="regPw" class="form-control" placeholder="비밀번호 설정" />
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">비밀번호 확인</label>
+        <input type="password" id="regPw2" class="form-control" placeholder="비밀번호 재입력" />
+      </div>
+      <div id="regError" class="alert alert-danger d-none small py-2"></div>
+      <button class="btn btn-success w-100 py-2 fw-semibold" onclick="doRegister()">
+        <i class="bi bi-person-plus me-1"></i>가입하기
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 공지 팝업 ==================== -->
+<div id="noticeOverlay" style="display:none;">
+  <div class="notice-popup mx-3">
+    <div class="popup-header">
+      <div>
+        <div class="small opacity-75 mb-1"><i class="bi bi-megaphone me-1"></i>필독 공지사항</div>
+        <strong id="popupTitle">공지사항</strong>
+      </div>
+      <button class="btn btn-sm btn-light" onclick="closeNotice()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="p-4">
+      <div id="popupContent" style="white-space:pre-wrap;font-size:.9rem;"></div>
+    </div>
+    <div class="px-4 pb-3 d-flex align-items-center justify-content-between border-top pt-3">
+      <div class="form-check mb-0">
+        <input type="checkbox" class="form-check-input" id="hideToday" />
+        <label class="form-check-label small text-muted" for="hideToday">오늘 하루 보지 않기</label>
+      </div>
+      <button class="btn btn-primary btn-sm px-3" onclick="closeNotice()">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 앱 본체 ==================== -->
+<div id="appSection">
+  <div id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- 사이드바 -->
+  <nav id="sidebar">
+    <div class="brand">
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <i class="bi bi-mortarboard-fill text-warning fs-5"></i>
+        <div>
+          <div class="brand-title">Data On AI CoP</div>
+          <div class="brand-sub">사내 전공 스터디 그룹</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="px-3 py-1" style="font-size:.72rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;">메뉴</div>
+      <a href="#" class="nav-link active" onclick="showPage('dashboard',this)">
+        <i class="bi bi-grid-1x2"></i>대시보드
+      </a>
+      <a href="#" class="nav-link" onclick="showPage('attendance',this)">
+        <i class="bi bi-calendar-check"></i>출결 관리
+      </a>
+      <a href="#" class="nav-link" onclick="showPage('lunch',this)">
+        <i class="bi bi-cup-hot"></i>점심 메뉴 고르기
+      </a>
+      <a href="#" class="nav-link" onclick="showPage('archive',this)">
+        <i class="bi bi-archive"></i>활동 기록
+      </a>
+      <a href="#" class="nav-link" onclick="showPage('board',this)">
+        <i class="bi bi-chat-square-text"></i>자유 게시판
+      </a>
+      <!-- 관리자 메뉴 -->
+      <div id="adminMenu" style="display:none;">
+        <div class="px-3 py-1 mt-2" style="font-size:.72rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;">관리자</div>
+        <a href="#" class="nav-link" onclick="showPage('members',this)">
+          <i class="bi bi-people"></i>멤버 관리
+        </a>
+      </div>
+    </div>
+
+    <div class="sidebar-footer mt-auto position-absolute bottom-0 w-100">
+      <div class="d-flex align-items-center gap-2">
+        <div class="rounded-circle bg-warning d-flex align-items-center justify-content-center fw-bold text-dark"
+             style="width:32px;height:32px;font-size:.8rem;" id="sidebarAvatar">?</div>
+        <div>
+          <div id="sidebarName" style="color:#fff;font-size:.82rem;font-weight:600;">-</div>
+          <div id="sidebarRole" style="font-size:.72rem;">-</div>
+        </div>
+        <button class="btn btn-sm ms-auto" style="color:rgba(255,255,255,.6);" onclick="doLogout()" title="로그아웃">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 메인 콘텐츠 영역 -->
+  <div id="mainContent">
+    <div id="topbar">
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm d-lg-none" id="hamburger" onclick="openSidebar()">
+          <i class="bi bi-list fs-4"></i>
+        </button>
+        <!-- 홈 아이콘: 대시보드 이외 페이지에서만 표시 -->
+        <button id="homeBtn" class="btn btn-sm btn-outline-secondary" style="display:none;"
+          onclick="showPage('dashboard', null)" title="대시보드로 이동">
+          <i class="bi bi-house-fill"></i>
+        </button>
+        <span id="topbarTitle" class="fw-bold text-dark">대시보드</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary-subtle text-primary" id="topbarUser">-</span>
+        <button class="btn btn-sm btn-outline-danger d-none d-md-inline-flex" onclick="doLogout()">
+          <i class="bi bi-box-arrow-right me-1"></i>로그아웃
+        </button>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- ── 대시보드 ── -->
+      <div id="page-dashboard">
+
+        <!-- 히어로 배너 -->
+        <div class="hero-banner">
+          <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+            <div style="position:relative;z-index:1;">
+              <div class="hero-greeting mb-1">
+                안녕하세요, <span id="heroName">-</span>님! 👋
+              </div>
+              <div class="hero-sub mb-3" id="heroDate">오늘도 함께 성장하는 CoP 입니다</div>
+              <div class="d-flex gap-2 flex-wrap">
+                <span class="badge rounded-pill px-3 py-2" style="background:rgba(255,255,255,.2);font-size:.82rem;" id="heroBadgeMember">
+                  <i class="bi bi-people me-1"></i>멤버 -명
+                </span>
+                <span class="badge rounded-pill px-3 py-2" style="background:rgba(255,255,255,.2);font-size:.82rem;" id="heroBadgeSession">
+                  <i class="bi bi-stack me-1"></i>누적 -회
+                </span>
+                <span class="badge rounded-pill px-3 py-2" style="background:rgba(255,255,255,.2);font-size:.82rem;" id="heroRole">
+                  <i class="bi bi-shield-check me-1"></i>-
+                </span>
+              </div>
+            </div>
+            <!-- D-Day -->
+            <div class="dday-box">
+              <div class="dday-title-label dday-label" style="color:rgba(255,255,255,.8);font-size:.76rem;text-transform:uppercase;letter-spacing:.06em;">
+                <i class="bi bi-calendar-event me-1"></i>다음 정기 모임
+              </div>
+              <div class="dday-num" id="heroDday">-</div>
+              <div class="dday-label" style="color:rgba(255,255,255,.7);" id="heroDdayDate">-</div>
+              <div class="dday-action">
+                <button class="btn btn-light btn-sm fw-bold px-3" style="border-radius:.65rem;font-size:.78rem;"
+                  onclick="showPage('attendance', document.querySelectorAll('#sidebar .nav-link')[1])">
+                  <i class="bi bi-hand-thumbs-up me-1"></i>참석 투표
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 빠른 바로가기 -->
+        <div class="row g-2 mb-4">
+          <div class="col-6 col-sm-3">
+            <a class="shortcut-btn" onclick="showPage('attendance', document.querySelectorAll('#sidebar .nav-link')[1])">
+              <div class="shortcut-icon" style="background:#eef2ff;color:#4f46e5;"><i class="bi bi-calendar-check-fill"></i></div>
+              <div class="shortcut-label">출결 관리</div>
+            </a>
+          </div>
+          <div class="col-6 col-sm-3">
+            <a class="shortcut-btn" onclick="showPage('lunch', document.querySelectorAll('#sidebar .nav-link')[2])">
+              <div class="shortcut-icon" style="background:#fef3c7;color:#d97706;"><i class="bi bi-cup-hot-fill"></i></div>
+              <div class="shortcut-label">점심 투표</div>
+            </a>
+          </div>
+          <div class="col-6 col-sm-3">
+            <a class="shortcut-btn" onclick="showPage('archive', document.querySelectorAll('#sidebar .nav-link')[3])">
+              <div class="shortcut-icon" style="background:#d1fae5;color:#059669;"><i class="bi bi-archive-fill"></i></div>
+              <div class="shortcut-label">활동 기록</div>
+            </a>
+          </div>
+          <div class="col-6 col-sm-3">
+            <a class="shortcut-btn" onclick="showPage('board', document.querySelectorAll('#sidebar .nav-link')[4])">
+              <div class="shortcut-icon" style="background:#fce7f3;color:#db2777;"><i class="bi bi-chat-square-text-fill"></i></div>
+              <div class="shortcut-label">자유게시판</div>
+            </a>
+          </div>
+        </div>
+
+        <!-- 중간 행: 내 활동 요약 + 점심 투표 현황 + 최신 게시글 -->
+        <div class="row g-3 mb-3">
+
+          <!-- 내 활동 요약 -->
+          <div class="col-lg-4">
+            <div class="cop-card h-100">
+              <div class="cop-card-title mb-3"><i class="bi bi-person-circle me-1"></i>내 활동 요약</div>
+              <div id="myActivitySummary">
+                <div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 오늘 점심 투표 -->
+          <div class="col-lg-4">
+            <div class="cop-card h-100">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="cop-card-title mb-0"><i class="bi bi-cup-hot me-1"></i>오늘 점심 투표</div>
+                <span class="badge bg-warning-subtle text-warning small">진행중</span>
+              </div>
+              <div id="dashLunchVotes">
+                <div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></div>
+              </div>
+              <button class="btn btn-outline-primary btn-sm w-100 mt-2" onclick="showPage('lunch', document.querySelectorAll('#sidebar .nav-link')[2])">
+                <i class="bi bi-box-arrow-up-right me-1"></i>투표하러 가기
+              </button>
+            </div>
+          </div>
+
+          <!-- 최신 게시글 -->
+          <div class="col-lg-4">
+            <div class="cop-card h-100">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="cop-card-title mb-0"><i class="bi bi-chat me-1"></i>최신 게시글</div>
+                <button class="btn btn-link btn-sm p-0 text-primary" onclick="showPage('board', document.querySelectorAll('#sidebar .nav-link')[4])">전체보기</button>
+              </div>
+              <div id="dashRecentPosts">
+                <div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 하단 행: 최근 활동 기록 + 멤버 출석 현황 -->
+        <div class="row g-3">
+
+          <!-- 최근 활동 기록 -->
+          <div class="col-lg-5">
+            <div class="cop-card">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="cop-card-title mb-0"><i class="bi bi-archive me-1"></i>최근 활동 기록</div>
+                <button class="btn btn-link btn-sm p-0 text-primary" onclick="showPage('archive', document.querySelectorAll('#sidebar .nav-link')[3])">전체보기</button>
+              </div>
+              <div id="dashRecentActivity">
+                <div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 멤버별 출석 현황 -->
+          <div class="col-lg-7">
+            <div class="cop-card">
+              <div class="cop-card-title mb-3"><i class="bi bi-bar-chart me-1"></i>멤버별 출석 현황</div>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0" style="font-size:.86rem;">
+                  <thead class="table-light">
+                    <tr><th>이름</th><th>참석</th><th>출석률</th><th>상태</th></tr>
+                  </thead>
+                  <tbody id="dashAttendTable">
+                    <tr><td colspan="4" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 출결 관리 ── -->
+      <!-- ── 출결 관리 ── -->
+      <div id="page-attendance" style="display:none;">
+        <div class="page-header">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <h5 class="mb-0"><i class="bi bi-calendar-check me-2 text-primary"></i>출결 관리</h5>
+              <p class="mb-0 mt-1">모임 일정 등록 및 참석 여부를 관리합니다</p>
+            </div>
+            <button id="btnAddMeeting" style="display:none;" class="btn btn-primary btn-sm"
+              onclick="showPage('archive', document.querySelectorAll('#sidebar .nav-link')[3])">
+              <i class="bi bi-plus me-1"></i>모임 등록
+            </button>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <!-- 모임 일정 목록 -->
+          <div class="col-lg-5">
+            <div class="cop-card">
+              <div class="cop-card-title mb-3"><i class="bi bi-calendar3 me-1"></i>모임 일정</div>
+              <div id="attendPostList">
+                <div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 전체 출석 통계 -->
+          <div class="col-lg-7">
+            <div class="cop-card">
+              <div class="cop-card-title mb-3"><i class="bi bi-bar-chart me-1"></i>전체 출석 통계</div>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0" style="font-size:.87rem;">
+                  <thead class="table-light">
+                    <tr><th>이름</th><th>역할</th><th>참석/전체</th><th>출석률</th><th>상태</th></tr>
+                  </thead>
+                  <tbody id="attendStatsTable">
+                    <tr><td colspan="5" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 모임별 참석자 상세 -->
+        <div id="attendDetailCard" style="display:none;" class="mt-3">
+          <div class="cop-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div class="cop-card-title mb-0">
+                <i class="bi bi-person-lines-fill me-1"></i><span id="attendDetailTitle">참석자 현황</span>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('attendDetailCard').style.display='none'">
+                <i class="bi bi-x"></i> 닫기
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle mb-0" style="font-size:.87rem;">
+                <thead class="table-light">
+                  <tr><th>이름</th><th>사번</th><th>상태</th><th>투표시간</th></tr>
+                </thead>
+                <tbody id="attendDetailTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 점심 메뉴 ── -->
+      <div id="page-lunch" style="display:none;">
+        <div class="page-header">
+          <h5><i class="bi bi-cup-hot me-2 text-primary"></i>점심 메뉴 고르기</h5>
+          <p>모임 날짜에 함께 먹을 식당을 투표로 결정하세요!</p>
+        </div>
+
+        <div class="row g-3">
+          <!-- 모임 선택 + 투표 -->
+          <div class="col-lg-8">
+            <div class="cop-card mb-3">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="cop-card-title mb-0"><i class="bi bi-check2-square me-1"></i>모임별 점심 투표</div>
+                <select id="lunchMeetingSelect" class="form-select form-select-sm" style="max-width:260px;"
+                  onchange="loadLunchVotes(this.value)">
+                  <option value="">-- 모임 선택 --</option>
+                </select>
+              </div>
+              <div id="lunchVoteArea">
+                <div class="text-center text-muted py-4">
+                  <i class="bi bi-arrow-up-circle" style="font-size:1.5rem;"></i>
+                  <div class="small mt-2">위에서 모임을 선택하세요</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 오른쪽: 식당목록 -->
+          <div class="col-lg-4">
+            <!-- 식당 목록 -->
+            <div class="cop-card">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="cop-card-title mb-0"><i class="bi bi-shop me-1"></i>식당 목록</div>
+                <button id="btnAddRestaurant" style="display:none;" class="btn btn-outline-primary btn-sm"
+                  onclick="showAddRestaurantForm()"><i class="bi bi-plus"></i></button>
+              </div>
+              <div id="lunchMenuList">
+                <div class="text-center text-muted py-2"><span class="spinner-border spinner-border-sm"></span></div>
+              </div>
+              <!-- 관리자: 식당 추가 폼 -->
+              <div id="addRestaurantForm" style="display:none;" class="mt-3 border-top pt-3">
+                <div class="mb-2">
+                  <input type="text" id="newMenuNm" class="form-control form-control-sm" placeholder="식당 이름 *" />
+                </div>
+                <div class="mb-2">
+                  <input type="url" id="newMenuLink" class="form-control form-control-sm" placeholder="지도 링크 (선택)" />
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-primary btn-sm flex-fill" onclick="addLunchMenu()">추가</button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('addRestaurantForm').style.display='none'">취소</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 활동 기록 ── -->
+      <div id="page-archive" style="display:none;">
+        <div class="page-header">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <h5 class="mb-0"><i class="bi bi-archive me-2 text-primary"></i>활동 기록</h5>
+              <p class="mb-0 mt-1">회차별 스터디 내용과 자료를 관리합니다</p>
+            </div>
+            <button id="btnWriteArchive" class="btn btn-primary btn-sm" style="display:none;" onclick="showArchiveForm()">
+              <i class="bi bi-plus me-1"></i>기록 작성
+            </button>
+          </div>
+        </div>
+
+        <!-- 목록 -->
+        <div id="archiveList">
+          <div class="text-center text-muted py-5"><span class="spinner-border spinner-border-sm"></span> 로딩 중...</div>
+        </div>
+
+        <!-- 작성/수정 폼 (모달) -->
+        <div id="archiveModal" class="modal-backdrop-custom" style="display:none;">
+          <div class="modal-box">
+            <h6 class="fw-bold mb-3" id="archiveModalTitle">활동 기록 작성</h6>
+            <input type="hidden" id="archivePostId" />
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">제목</label>
+              <input type="text" id="archiveTitle" class="form-control" placeholder="활동 제목" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">모임 일시 (선택)</label>
+              <input type="datetime-local" id="archiveMeetingDt" class="form-control" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">내용</label>
+              <textarea id="archiveContent" class="form-control" rows="5" placeholder="활동 내용을 입력하세요..."></textarea>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary" onclick="closeArchiveModal()">취소</button>
+              <button class="btn btn-primary" onclick="submitArchive()"><i class="bi bi-send me-1"></i>저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 자유 게시판 ── -->
+      <div id="page-board" style="display:none;">
+        <div class="page-header">
+          <h5><i class="bi bi-chat-square-text me-2 text-primary"></i>자유 게시판</h5>
+          <p>자유롭게 소통하는 공간입니다</p>
+        </div>
+
+        <!-- 목록 뷰 -->
+        <div id="boardList">
+          <div class="cop-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div class="cop-card-title mb-0">게시글 목록</div>
+              <button class="btn btn-primary btn-sm" onclick="showBoardWrite()"><i class="bi bi-plus me-1"></i>글쓰기</button>
+            </div>
+            <div id="boardListItems">
+              <div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 상세 뷰 -->
+        <div id="boardDetail" style="display:none;">
+          <div class="cop-card mb-3">
+            <button class="btn btn-sm btn-outline-secondary mb-3" onclick="backToList()">
+              <i class="bi bi-arrow-left me-1"></i>목록으로
+            </button>
+            <h5 class="fw-bold" id="detailTitle">-</h5>
+            <div class="text-muted small mb-3" id="detailMeta">-</div>
+            <div id="detailContent" style="white-space:pre-wrap;"></div>
+            <!-- 첨부파일 -->
+            <div id="detailFiles" class="mt-3" style="display:none;">
+              <div class="border-top pt-3">
+                <div class="small fw-semibold text-muted mb-2"><i class="bi bi-paperclip me-1"></i>첨부파일</div>
+                <div id="detailFileList"></div>
+              </div>
+            </div>
+            <div id="detailActions" class="d-flex gap-2 mt-3"></div>
+          </div>
+
+          <!-- 댓글 -->
+          <div class="cop-card">
+            <div class="cop-card-title mb-3"><i class="bi bi-chat me-1"></i>댓글 <span id="commentCount">0</span>개</div>
+            <div id="commentList"></div>
+            <div class="mt-3">
+              <textarea id="commentInput" class="form-control mb-2" rows="2" placeholder="댓글을 입력하세요..." style="font-size:.87rem;"></textarea>
+              <div class="d-flex justify-content-end">
+                <button class="btn btn-primary btn-sm px-3" onclick="submitComment()">댓글 등록</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 글쓰기/수정 뷰 -->
+        <div id="boardWrite" style="display:none;">
+          <div class="cop-card">
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <button class="btn btn-sm btn-outline-secondary" onclick="backToList()">
+                <i class="bi bi-arrow-left me-1"></i>취소
+              </button>
+              <h6 class="fw-bold mb-0" id="boardWriteTitle">새 글 작성</h6>
+            </div>
+            <input type="hidden" id="editPostId" />
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">제목</label>
+              <input type="text" id="writeTitle" class="form-control" placeholder="제목을 입력하세요" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">내용</label>
+              <textarea id="writeContent" class="form-control" rows="6" placeholder="내용을 입력하세요..."></textarea>
+            </div>
+            <div class="mb-3" id="fileInputArea">
+              <label class="form-label fw-semibold small"><i class="bi bi-paperclip me-1"></i>파일 첨부 (선택, 여러 개 가능)</label>
+              <input type="file" id="writeFiles" class="form-control" multiple />
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary" onclick="backToList()">취소</button>
+              <button class="btn btn-primary" onclick="submitPost()"><i class="bi bi-send me-1"></i>게시하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 멤버 관리 (관리자) ── -->
+      <div id="page-members" style="display:none;">
+        <div class="page-header">
+          <h5><i class="bi bi-people me-2 text-primary"></i>멤버 관리</h5>
+          <p>가입된 멤버의 권한 변경 및 삭제를 관리합니다</p>
+        </div>
+        <div class="cop-card">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0" style="font-size:.87rem;">
+              <thead class="table-light">
+                <tr><th>사번</th><th>성명</th><th>역할</th><th>가입일</th><th style="width:130px;">관리</th></tr>
+              </thead>
+              <tbody id="membersTable">
+                <tr><td colspan="5" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-content -->
+  </div><!-- /mainContent -->
+
+  <!-- ── AI 도우미 플로팅 버튼 ── -->
+  <button class="ai-fab" title="AI 도우미" onclick="openAiAgent()">
+    <i class="bi bi-headset"></i>
+  </button>
+
+  <!-- AI 도우미 비밀번호 모달 -->
+  <div class="modal fade" id="aiAgentModal" tabindex="-1" aria-labelledby="aiAgentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content" style="border-radius:1rem; overflow:hidden;">
+        <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#4f46e5,#7c3aed); padding:1.25rem 1.5rem 0.75rem;">
+          <div class="d-flex align-items-center gap-2 text-white">
+            <i class="bi bi-headset fs-4"></i>
+            <div>
+              <div class="fw-bold" style="font-size:.95rem;">AI 도우미</div>
+              <div style="font-size:.75rem; opacity:.85;">비밀번호를 입력하세요</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 pt-3 pb-4">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock-fill text-primary"></i></span>
+            <input type="password" id="aiAgentPwInput" class="form-control"
+              placeholder="비밀번호 입력"
+              onkeydown="if(event.key==='Enter') confirmAiAgent()" />
+          </div>
+          <div id="aiAgentPwError" class="text-danger small mt-2 d-none">
+            <i class="bi bi-exclamation-circle me-1"></i>비밀번호가 올바르지 않습니다.
+          </div>
+          <button class="btn btn-primary w-100 mt-3" onclick="confirmAiAgent()"
+            style="background:linear-gradient(135deg,#4f46e5,#7c3aed); border:none; border-radius:.6rem;">
+            <i class="bi bi-box-arrow-up-right me-1"></i>AI 도우미 열기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /appSection -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── 전역 상태
+let currentUser = null;
+let currentPostId = null; // 게시판 현재 열린 글
+let allActivityPosts = []; // 활동기록 캐시
+
+// ── AI 도우미
+// ── 로고 fallback
+function sidebarLogoFallback() {
+  const el = document.getElementById('sidebarLogo');
+  if (el) {
+    el.outerHTML = '<i class="bi bi-mortarboard-fill text-warning fs-5"></i>';
+  }
+}
+function loginLogoFallback() {
+  const el = document.getElementById('loginLogo');
+  if (el) {
+    el.outerHTML = '<i class="bi bi-mortarboard-fill" style="font-size:2.5rem;color:var(--primary);"></i>';
+  }
+}
+
+const AI_AGENT_URL = 'https://udify.app/workflow/jOyUg4TYexuat45L';
+const AI_AGENT_PW  = '6292';
+let   _aiModal     = null;
+
+function openAiAgent() {
+  const el = document.getElementById('aiAgentModal');
+  if (!_aiModal) _aiModal = new bootstrap.Modal(el);
+  document.getElementById('aiAgentPwInput').value = '';
+  document.getElementById('aiAgentPwError').classList.add('d-none');
+  _aiModal.show();
+  setTimeout(() => document.getElementById('aiAgentPwInput').focus(), 300);
+}
+
+function confirmAiAgent() {
+  const pw  = document.getElementById('aiAgentPwInput').value;
+  const err = document.getElementById('aiAgentPwError');
+  if (pw === AI_AGENT_PW) {
+    _aiModal.hide();
+    window.open(AI_AGENT_URL, '_blank', 'noopener,noreferrer');
+  } else {
+    err.classList.remove('d-none');
+    document.getElementById('aiAgentPwInput').select();
+  }
+}
+
+// ── API 헬퍼
+async function api(url, options = {}) {
+  const defaults = { headers: { 'Content-Type': 'application/json' }, credentials: 'include' };
+  const merged = { ...defaults, ...options, headers: { ...defaults.headers, ...(options.headers || {}) } };
+  const res = await fetch(url, merged);
+  if (res.status === 204) return null;
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) throw { status: res.status, data };
+  return data;
+}
+
+function fmtDt(dtStr) {
+  if (!dtStr) return '-';
+  const d = new Date(dtStr);
+  return d.getFullYear() + '.' +
+    String(d.getMonth()+1).padStart(2,'0') + '.' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+function fmtDtFull(dtStr) {
+  if (!dtStr) return '-';
+  const d = new Date(dtStr);
+  return d.getFullYear() + '.' +
+    String(d.getMonth()+1).padStart(2,'0') + '.' +
+    String(d.getDate()).padStart(2,'0') + ' ' +
+    String(d.getHours()).padStart(2,'0') + ':' +
+    String(d.getMinutes()).padStart(2,'0');
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── 인증 탭 전환
+function switchAuth(tab) {
+  document.querySelectorAll('#authTab .nav-link').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('loginTab').style.display    = tab === 'login'    ? '' : 'none';
+  document.getElementById('registerTab').style.display = tab === 'register' ? '' : 'none';
+}
+
+// ── 로그인
+async function doLogin() {
+  const userId  = document.getElementById('loginId').value.trim();
+  const userPwd = document.getElementById('loginPw').value;
+  const errEl = document.getElementById('loginError');
+  errEl.classList.add('d-none');
+  try {
+    const user = await api('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ userId, userPwd })
+    });
+    afterLogin(user);
+  } catch(e) {
+    errEl.textContent = (e.data && e.data.error) || '로그인 실패';
+    errEl.classList.remove('d-none');
+  }
+}
+
+// ── 회원가입
+async function doRegister() {
+  const userId  = document.getElementById('regId').value.trim();
+  const userNm  = document.getElementById('regName').value.trim();
+  const userPwd = document.getElementById('regPw').value;
+  const userPwd2 = document.getElementById('regPw2').value;
+  const errEl = document.getElementById('regError');
+  errEl.classList.add('d-none');
+
+  if (!userId || !userNm || !userPwd) { errEl.textContent = '모든 항목을 입력하세요.'; errEl.classList.remove('d-none'); return; }
+  if (userPwd !== userPwd2) { errEl.textContent = '비밀번호가 일치하지 않습니다.'; errEl.classList.remove('d-none'); return; }
+
+  try {
+    await api('/api/auth/register', { method:'POST', body: JSON.stringify({userId, userNm, userPwd}) });
+    alert(`${userNm}님, 가입이 완료되었습니다!\n로그인해 주세요.`);
+    document.getElementById('loginId').value = userId;
+    switchAuth('login');
+    document.querySelector('#authTab .nav-link').classList.add('active');
+    document.querySelectorAll('#authTab .nav-link')[1].classList.remove('active');
+  } catch(e) {
+    errEl.textContent = (e.data && e.data.error) || '가입 실패';
+    errEl.classList.remove('d-none');
+  }
+}
+
+// ── 로그아웃
+async function doLogout() {
+  await api('/api/auth/logout', { method:'POST' }).catch(()=>{});
+  currentUser = null;
+  document.getElementById('appSection').style.display   = 'none';
+  document.getElementById('loginSection').style.display = 'flex';
+}
+
+// ── 로그인 후 처리
+function afterLogin(user) {
+  currentUser = user;
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('appSection').style.display   = 'block';
+
+  // 사이드바 / 탑바
+  document.getElementById('sidebarName').textContent   = user.userNm;
+  document.getElementById('sidebarRole').textContent   = user.userRole === 'ADMIN' ? '운영자' : '일반 멤버';
+  document.getElementById('sidebarAvatar').textContent = user.userNm[0];
+  document.getElementById('topbarUser').textContent    = user.userId;
+
+  // 히어로
+  document.getElementById('heroName').textContent = user.userNm;
+  document.getElementById('heroRole').innerHTML =
+    '<i class="bi bi-shield-check me-1"></i>' + (user.userRole === 'ADMIN' ? '운영자' : '일반 멤버');
+  const now = new Date();
+  const days = ['일','월','화','수','목','금','토'];
+  document.getElementById('heroDate').textContent =
+    now.getFullYear() + '년 ' + (now.getMonth()+1) + '월 ' + now.getDate() + '일 (' + days[now.getDay()] + '요일) · 오늘도 함께 성장하는 CoP 입니다 🚀';
+
+  // 관리자 메뉴
+  if (user.userRole === 'ADMIN') {
+    document.getElementById('adminMenu').style.display = '';
+  }
+
+  // 페이지 초기화: URL hash 있으면 해당 페이지, 없으면 대시보드
+  const initHash = window.location.hash.slice(1);
+  const initPage = (initHash && pages.includes(initHash)) ? initHash : 'dashboard';
+  showPage(initPage, null);
+
+  // 공지 팝업
+  const hideKey = 'cop_hide_' + new Date().toDateString();
+  if (!localStorage.getItem(hideKey)) {
+    loadNoticePopup();
+  }
+}
+
+// ── 공지 팝업
+async function loadNoticePopup() {
+  try {
+    const p = await api('/api/posts/notice/popup');
+    if (!p) return;
+    document.getElementById('popupTitle').textContent   = p.title;
+    document.getElementById('popupContent').textContent = p.content;
+    document.getElementById('noticeOverlay').style.display = 'flex';
+  } catch(e) { /* 공지 없으면 무시 */ }
+}
+
+function closeNotice() {
+  if (document.getElementById('hideToday').checked) {
+    localStorage.setItem('cop_hide_' + new Date().toDateString(), '1');
+  }
+  document.getElementById('noticeOverlay').style.display = 'none';
+}
+
+// ── 페이지 전환
+const pages = ['dashboard','attendance','lunch','archive','board','members'];
+const pageTitles = {
+  dashboard: '대시보드', attendance: '출결 관리', lunch: '점심 메뉴 고르기',
+  archive: '활동 기록', board: '자유 게시판', members: '멤버 관리'
+};
+
+function showPage(name, linkEl) {
+  pages.forEach(p => {
+    const el = document.getElementById('page-' + p);
+    if (el) el.style.display = p === name ? '' : 'none';
+  });
+  document.getElementById('topbarTitle').textContent = pageTitles[name] || name;
+
+  // active 네비 링크 처리 (전달된 엘리먼트 우선, 없으면 onclick 속성으로 탐색)
+  document.querySelectorAll('#sidebar .nav-link').forEach(l => {
+    l.classList.remove('active');
+    const shouldActive = linkEl
+      ? l === linkEl
+      : (l.getAttribute('onclick') || '').includes("'" + name + "'");
+    if (shouldActive) l.classList.add('active');
+  });
+  closeSidebar();
+
+  // 홈 버튼: 대시보드에서는 숨김, 다른 페이지에서는 표시
+  const homeBtn = document.getElementById('homeBtn');
+  if (homeBtn) homeBtn.style.display = name === 'dashboard' ? 'none' : '';
+
+  // URL hash 업데이트 (hashchange 이벤트 미발생)
+  if (window.location.hash !== '#' + name) {
+    history.replaceState(null, '', location.pathname + '#' + name);
+  }
+
+  // 페이지별 데이터 로드
+  if (name === 'dashboard')  loadDashboard();
+  if (name === 'board')      { backToList(); loadBoard(); }
+  if (name === 'attendance') loadAttendance();
+  if (name === 'lunch')      loadLunch();
+  if (name === 'archive')    loadArchive();
+  if (name === 'members')    loadMembers();
+}
+
+// ── 사이드바 (모바일)
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebarOverlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+// ════════════════════════════════
+// ── 대시보드 로드
+// ════════════════════════════════
+async function loadDashboard() {
+  Promise.all([
+    loadDashLunch(),
+    loadDashRecentPosts(),
+    loadDashActivity(),
+    loadDashAttendStats(),
+    loadMyActivity(),
+    loadDashCounts()
+  ]);
+}
+
+async function loadDashCounts() {
+  try {
+    const [users, activities] = await Promise.all([
+      api('/api/users'),
+      api('/api/posts?type=ACTIVITY')
+    ]);
+    document.getElementById('heroBadgeMember').innerHTML =
+      '<i class="bi bi-people me-1"></i>멤버 ' + users.length + '명';
+    document.getElementById('heroBadgeSession').innerHTML =
+      '<i class="bi bi-stack me-1"></i>누적 ' + activities.length + '회';
+
+    // D-Day 계산: 가장 가까운 미래 meetingDt
+    const upcoming = activities
+      .filter(p => p.meetingDt && new Date(p.meetingDt) > new Date())
+      .sort((a,b) => new Date(a.meetingDt)-new Date(b.meetingDt));
+    if (upcoming.length > 0) {
+      const next = upcoming[0];
+      const diff = Math.ceil((new Date(next.meetingDt) - new Date()) / (1000*60*60*24));
+      document.getElementById('heroDday').textContent = diff === 0 ? 'D-Day' : 'D-' + diff;
+      const d = new Date(next.meetingDt);
+      const days = ['일','월','화','수','목','금','토'];
+      document.getElementById('heroDdayDate').textContent =
+        d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0') +
+        ' (' + days[d.getDay()] + ')';
+    } else {
+      document.getElementById('heroDday').textContent = '-';
+      document.getElementById('heroDdayDate').textContent = '예정 없음';
+    }
+  } catch(e) {}
+}
+
+async function loadDashLunch() {
+  const el = document.getElementById('dashLunchVotes');
+  try {
+    const posts = await api('/api/posts?type=ACTIVITY');
+    const upcoming = (posts||[])
+      .filter(p => p.meetingDt && new Date(p.meetingDt) > new Date())
+      .sort((a,b) => new Date(a.meetingDt) - new Date(b.meetingDt));
+    if (!upcoming.length) {
+      el.innerHTML = '<p class="text-muted small text-center py-2">예정된 모임이 없습니다</p>';
+      return;
+    }
+    const next = upcoming[0];
+    const data = await api('/api/lunch/votes?meetingPostId=' + next.postId);
+    const summary = (data && data.summary) || [];
+    let html = '';
+    if (next.confirmedLunchNm) {
+      html += `<div class="alert alert-success py-2 small mb-2">
+        <i class="bi bi-check-circle-fill me-1"></i>확정: <strong>${escHtml(next.confirmedLunchNm)}</strong></div>`;
+    }
+    if (summary.length === 0) {
+      html += '<p class="text-muted small text-center py-2">아직 투표가 없습니다</p>';
+    } else {
+      html += summary.slice(0,3).map(v => `
+        <div class="mb-2">
+          <div class="d-flex justify-content-between small mb-1">
+            <span>${escHtml(v.menuNm)}</span>
+            <span class="fw-bold ${v.isMyVote ? 'text-primary' : ''}">${v.voteCount}표${v.isMyVote ? ' ✓' : ''}</span>
+          </div>
+          <div class="progress"><div class="progress-bar bg-primary" style="width:${v.percent}%"></div></div>
+        </div>`).join('');
+    }
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<p class="text-muted small text-center py-2">아직 투표가 없습니다</p>';
+  }
+}
+
+async function loadDashRecentPosts() {
+  try {
+    const posts = await api('/api/posts?type=FREE');
+    const el = document.getElementById('dashRecentPosts');
+    if (!posts || posts.length === 0) {
+      el.innerHTML = '<p class="text-muted small text-center py-2">게시글이 없습니다</p>';
+      return;
+    }
+    el.innerHTML = posts.slice(0,4).map(p => `
+      <div class="board-row" style="cursor:pointer;" onclick="showPage('board', document.querySelectorAll('#sidebar .nav-link')[4]); setTimeout(()=>openPost(${p.postId}),300)">
+        <div class="fw-semibold small">${escHtml(p.title)}</div>
+        <div class="text-muted" style="font-size:.76rem;">${escHtml(p.writerNm||p.writerId)} · ${fmtDt(p.regDt)} · 댓글 ${p.commentCount||0}</div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function loadDashActivity() {
+  try {
+    const posts = await api('/api/posts?type=ACTIVITY');
+    const el = document.getElementById('dashRecentActivity');
+    if (!posts || posts.length === 0) {
+      el.innerHTML = '<p class="text-muted small text-center py-2">활동 기록이 없습니다</p>';
+      return;
+    }
+    el.innerHTML = posts.slice(0,3).map((p, i) => `
+      <div class="board-row">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <span class="badge ${i===0?'bg-primary':'bg-secondary'} me-1 mb-1">${posts.length-i}회</span>
+            <span class="fw-semibold small">${escHtml(p.title)}</span>
+            <div class="text-muted" style="font-size:.76rem;">${p.meetingDt ? fmtDt(p.meetingDt) : fmtDt(p.regDt)}</div>
+          </div>
+          <span class="badge bg-light text-dark border small"><i class="bi bi-paperclip"></i> ${p.fileCount||0}</span>
+        </div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function loadDashAttendStats() {
+  try {
+    const stats = await api('/api/attendance/stats');
+    const tbody = document.getElementById('dashAttendTable');
+    if (!stats || stats.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">데이터 없음</td></tr>';
+      return;
+    }
+    tbody.innerHTML = stats.slice(0,5).map(s => {
+      const isMe = currentUser && s.userId === currentUser.userId;
+      const rate = s.attendRate;
+      const barColor = rate >= 80 ? 'bg-success' : rate >= 60 ? 'bg-warning' : 'bg-danger';
+      const badge = rate >= 90 ? '<span class="badge badge-attend">개근</span>'
+                  : rate >= 80 ? '<span class="badge badge-attend">우수</span>'
+                  : rate >= 60 ? '<span class="badge bg-warning-subtle text-warning">보통</span>'
+                  : '<span class="badge badge-absent">저조</span>';
+      return `<tr>
+        <td><strong>${escHtml(s.userNm)}</strong>${isMe ? ' <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.68rem;">나</span>' : ''}</td>
+        <td>${s.attendCount}/${s.totalMeetings}</td>
+        <td><div class="d-flex align-items-center gap-2"><div class="progress flex-grow-1"><div class="progress-bar ${barColor}" style="width:${rate}%"></div></div><span class="small text-muted">${rate}%</span></div></td>
+        <td>${badge}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function loadMyActivity() {
+  try {
+    const my = await api('/api/attendance/my');
+    const el = document.getElementById('myActivitySummary');
+    const rate = my.attendRate || 0;
+    const pct = Math.round(rate * 3.6) + 'deg';
+    const badge = rate >= 90 ? '<span class="badge badge-attend mt-1">개근</span>'
+                : rate >= 80 ? '<span class="badge badge-attend mt-1">우수</span>'
+                : rate >= 60 ? '<span class="badge bg-warning-subtle text-warning mt-1">보통</span>'
+                : '<span class="badge badge-absent mt-1">저조</span>';
+    el.innerHTML = `
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="my-attend-ring" style="--pct:${pct};">
+          <div class="my-attend-inner d-flex align-items-center justify-content-center">
+            <span class="fw-bold" style="font-size:.85rem;color:#4f46e5;">${rate}%</span>
+          </div>
+        </div>
+        <div>
+          <div class="fw-bold">출석률 ${rate}%</div>
+          <div class="text-muted small">${my.attendCount} / ${my.totalMeetings} 회 참석</div>
+          ${badge}
+        </div>
+      </div>
+      <div class="border-top pt-3">
+        <div class="d-flex justify-content-between small">
+          <span class="text-muted">가입일</span>
+          <strong>${fmtDt(currentUser && currentUser.regDt)}</strong>
+        </div>
+      </div>`;
+  } catch(e) {}
+}
+
+// ════════════════════════════════
+// ── 출결 관리
+// ════════════════════════════════
+let myAttendMap = {};
+
+async function loadAttendance() {
+  const btnAdd = document.getElementById('btnAddMeeting');
+  if (btnAdd) btnAdd.style.display = currentUser && currentUser.userRole === 'ADMIN' ? '' : 'none';
+  try {
+    const [posts, stats, mine] = await Promise.all([
+      api('/api/posts?type=ACTIVITY'),
+      api('/api/attendance/stats'),
+      api('/api/attendance/mine')
+    ]);
+    allActivityPosts = posts || [];
+    myAttendMap = mine || {};
+    renderAttendPosts(allActivityPosts);
+    renderAttendStats(stats || []);
+  } catch(e) {}
+}
+
+function renderAttendPosts(posts) {
+  const el = document.getElementById('attendPostList');
+  if (!posts || posts.length === 0) {
+    el.innerHTML = '<p class="text-muted small text-center py-3">등록된 모임 일정이 없습니다<br><small>활동 기록 메뉴에서 모임을 등록하세요</small></p>';
+    return;
+  }
+  const sorted = [...posts].sort((a,b) => new Date(b.meetingDt||b.regDt) - new Date(a.meetingDt||a.regDt));
+  el.innerHTML = sorted.map((p, i) => {
+    const dDay = p.meetingDt ? Math.ceil((new Date(p.meetingDt) - new Date()) / (1000*60*60*24)) : null;
+    const isPast = dDay !== null && dDay < 0;
+    const dDayBadge = dDay === null ? '' :
+      isPast ? '<span class="badge bg-secondary">완료</span>' :
+      dDay === 0 ? '<span class="badge bg-danger">D-Day</span>' :
+      `<span class="badge bg-warning text-dark">D-${dDay}</span>`;
+    const myStatus = myAttendMap[p.postId];
+    const btnYcls = `btn btn-sm flex-fill ${myStatus==='Y' ? 'btn-success' : 'btn-outline-success'}`;
+    const btnNcls = `btn btn-sm flex-fill ${myStatus==='N' ? 'btn-danger'  : 'btn-outline-danger'}`;
+    const seq = posts.length - i;
+    return `
+      <div class="border rounded-3 p-3 mb-2" style="border-color:#e2e8f0!important;">
+        <div class="d-flex align-items-start gap-2 mb-2">
+          <span class="badge ${i===0?'bg-primary':'bg-secondary'}">${seq}회차</span>
+          ${dDayBadge}
+          <div class="flex-grow-1">
+            <div class="fw-bold">${escHtml(p.title)}</div>
+            ${p.meetingDt ? `<div class="text-muted small"><i class="bi bi-calendar me-1"></i>${fmtDtFull(p.meetingDt)}</div>` : ''}
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="${btnYcls}" onclick="voteAttendance(${p.postId},'Y',this)">
+            <i class="bi bi-check-circle me-1"></i>참석${myStatus==='Y'?' ✓':''}
+          </button>
+          <button class="${btnNcls}" onclick="voteAttendance(${p.postId},'N',this)">
+            <i class="bi bi-x-circle me-1"></i>불참${myStatus==='N'?' ✓':''}
+          </button>
+        </div>
+        <button class="btn btn-link btn-sm p-0 text-muted mt-1" style="font-size:.78rem;"
+          onclick="loadAttendDetail(${p.postId},'${escHtml(p.title)}')">
+          <i class="bi bi-people me-1"></i>참석자 보기
+        </button>
+      </div>`;
+  }).join('');
+}
+
+function renderAttendStats(stats) {
+  const tbody = document.getElementById('attendStatsTable');
+  if (!stats || stats.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">데이터 없음</td></tr>';
+    return;
+  }
+  tbody.innerHTML = stats.map(s => {
+    const isMe = currentUser && s.userId === currentUser.userId;
+    const rate = s.attendRate;
+    const barColor = rate >= 80 ? 'bg-success' : rate >= 60 ? 'bg-warning' : 'bg-danger';
+    const badge = rate >= 90 ? '<span class="badge badge-attend">개근</span>'
+                : rate >= 80 ? '<span class="badge badge-attend">우수</span>'
+                : rate >= 60 ? '<span class="badge bg-warning-subtle text-warning">보통</span>'
+                : '<span class="badge badge-absent">저조</span>';
+    const roleBadge = s.userRole === 'ADMIN' ? '<span class="badge bg-primary-subtle text-primary">운영자</span>' : '<span class="badge bg-light text-dark">멤버</span>';
+    return `<tr${isMe ? ' class="table-primary"':''}>
+      <td><strong>${escHtml(s.userNm)}</strong>${isMe ? ' <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.68rem;">나</span>' : ''}</td>
+      <td>${roleBadge}</td>
+      <td>${s.attendCount}/${s.totalMeetings}</td>
+      <td><div class="d-flex align-items-center gap-2"><div class="progress flex-grow-1"><div class="progress-bar ${barColor}" style="width:${rate}%"></div></div><span class="small text-muted">${rate}%</span></div></td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function voteAttendance(postId, status, btn) {
+  try {
+    await api('/api/attendance/vote', { method:'POST', body: JSON.stringify({postId, status}) });
+    myAttendMap[postId] = status;
+    const card = btn.closest('.border');
+    const [yBtn, nBtn] = card.querySelectorAll('.btn-sm.flex-fill');
+    yBtn.className = `btn btn-sm flex-fill ${status==='Y' ? 'btn-success' : 'btn-outline-success'}`;
+    yBtn.innerHTML = `<i class="bi bi-check-circle me-1"></i>참석${status==='Y' ? ' ✓' : ''}`;
+    nBtn.className = `btn btn-sm flex-fill ${status==='N' ? 'btn-danger' : 'btn-outline-danger'}`;
+    nBtn.innerHTML = `<i class="bi bi-x-circle me-1"></i>불참${status==='N' ? ' ✓' : ''}`;
+    api('/api/attendance/stats').then(stats => renderAttendStats(stats));
+  } catch(e) { alert('투표 실패'); }
+}
+
+async function loadAttendDetail(postId, title) {
+  try {
+    const list = await api('/api/attendance?postId=' + postId);
+    document.getElementById('attendDetailTitle').textContent = title + ' 참석자 현황';
+    const tbody = document.getElementById('attendDetailTable');
+    if (!list || list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">투표 데이터 없음</td></tr>';
+    } else {
+      tbody.innerHTML = list.map(a => `
+        <tr>
+          <td>${escHtml(a.userNm||a.userId)}</td>
+          <td>${escHtml(a.userId)}</td>
+          <td>${a.status==='Y' ? '<span class="badge badge-attend">참석</span>' : '<span class="badge badge-absent">불참</span>'}</td>
+          <td class="text-muted small">${fmtDtFull(a.voteDt)}</td>
+        </tr>`).join('');
+    }
+    document.getElementById('attendDetailCard').style.display = '';
+    document.getElementById('attendDetailCard').scrollIntoView({behavior:'smooth', block:'nearest'});
+  } catch(e) {}
+}
+
+// ════════════════════════════════
+// ── 점심 메뉴
+// ════════════════════════════════
+let currentLunchMeetingId = null;
+
+async function loadLunch() {
+  const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
+  const btnR = document.getElementById('btnAddRestaurant');
+  if (btnR) btnR.style.display = isAdmin ? '' : 'none';
+  try {
+    const posts = await api('/api/posts?type=ACTIVITY');
+    const sel = document.getElementById('lunchMeetingSelect');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">-- 모임 선택 --</option>'
+      + (posts||[])
+          .sort((a,b) => new Date(b.meetingDt||b.regDt) - new Date(a.meetingDt||a.regDt))
+          .map(p => `<option value="${p.postId}">${fmtDtFull(p.meetingDt)||''} · ${escHtml(p.title)}</option>`)
+          .join('');
+    if (!prev && sel.options.length > 1) {
+      sel.value = sel.options[1].value;
+      loadLunchVotes(sel.value);
+    } else if (prev) {
+      sel.value = prev;
+    }
+  } catch(e) {}
+  loadLunchMenuList();
+}
+
+async function loadLunchVotes(meetingPostId) {
+  if (!meetingPostId) return;
+  currentLunchMeetingId = meetingPostId;
+  const el = document.getElementById('lunchVoteArea');
+  el.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></div>';
+  try {
+    const [data, allMenus, post] = await Promise.all([
+      api('/api/lunch/votes?meetingPostId=' + meetingPostId),
+      api('/api/lunch/menus'),
+      api('/api/posts/' + meetingPostId)
+    ]);
+    const allVotes = data.allVotes || [];
+    const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
+    // 현재 유저 투표 상태
+    const myVote = allVotes.find(v => currentUser && v.userId === currentUser.userId);
+    const myMenuNm  = myVote && myVote.notEatingYn !== 'Y' ? myVote.menuNm : null;
+    const isNotEat  = myVote && myVote.notEatingYn === 'Y';
+    let html = '';
+
+    /* ════════ CASE 1: 식당 미확정 ════════ */
+    if (!post || !post.confirmedLunchNm) {
+      if (isAdmin) {
+        const activeMenus = (allMenus||[]).filter(m => m.useYn === 'Y');
+        html += `
+          <div class="text-center py-3">
+            <i class="bi bi-shop text-muted d-block mb-2" style="font-size:2rem;"></i>
+            <div class="fw-semibold mb-1">이번 모임 식당을 선택해주세요</div>
+            <div class="text-muted small mb-3">식당을 확정하면 멤버들이 메뉴를 선택할 수 있습니다</div>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+              <select id="adminRestaurantSelect" class="form-select form-select-sm" style="max-width:220px;">
+                <option value="">-- 식당 선택 --</option>
+                ${activeMenus.map(m =>
+                  `<option value="${m.menuId}" data-nm="${escHtml(m.menuNm)}">${escHtml(m.menuNm)}</option>`
+                ).join('')}
+              </select>
+              <button class="btn btn-primary btn-sm px-4" onclick="confirmFromSelect(${meetingPostId})">
+                <i class="bi bi-check2 me-1"></i>확정하기
+              </button>
+            </div>
+          </div>`;
+      } else {
+        html += `
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-hourglass-split d-block mb-2" style="font-size:2rem;"></i>
+            <div class="fw-semibold">식당 미정</div>
+            <div class="small mt-1">운영자가 식당을 확정하면 메뉴를 선택할 수 있습니다</div>
+          </div>`;
+      }
+      el.innerHTML = html;
+      return;
+    }
+
+    /* ════════ CASE 2: 식당 확정됨 ════════ */
+    // 확정 식당 음식 목록
+    let confirmedItems = [];
+    if (post.confirmedLunchId) {
+      confirmedItems = await api('/api/lunch/menus/' + post.confirmedLunchId + '/items').catch(() => []);
+    }
+    const confirmedMenu = (allMenus||[]).find(m => m.menuId === post.confirmedLunchId);
+    const restaurantLink = confirmedMenu && confirmedMenu.menuLink
+      ? `<a href="${escHtml(confirmedMenu.menuLink)}" target="_blank" class="ms-1 small text-success">
+           <i class="bi bi-box-arrow-up-right"></i>
+         </a>` : '';
+
+    // ─ 확정 식당 헤더
+    html += `
+      <div class="rounded-3 p-3 mb-3" style="background:rgba(16,185,129,.12);border:1.5px solid rgba(16,185,129,.4);">
+        <div class="d-flex align-items-center justify-content-between gap-2">
+          <div>
+            <div class="fw-bold" style="color:#065f46;font-size:1rem;">
+              <i class="bi bi-check-circle-fill me-1" style="color:#059669;"></i>
+              ${escHtml(post.confirmedLunchNm)}${restaurantLink}
+            </div>
+            <div class="small text-muted mt-1">오늘의 식당이 확정되었습니다</div>
+          </div>
+          ${isAdmin ? `
+          <button class="btn btn-sm btn-outline-secondary flex-shrink-0"
+            onclick="toggleChangeRestaurant(this, ${meetingPostId})" title="식당 변경">
+            <i class="bi bi-pencil"></i>
+          </button>` : ''}
+        </div>
+        ${isAdmin ? `
+        <div id="changeRestaurantArea" style="display:none;" class="mt-3 pt-3 border-top">
+          <div class="d-flex gap-2 flex-wrap align-items-center">
+            <select id="adminRestaurantSelect" class="form-select form-select-sm" style="max-width:200px;">
+              <option value="">-- 식당 선택 --</option>
+              ${(allMenus||[]).filter(m => m.useYn==='Y').map(m =>
+                `<option value="${m.menuId}" ${m.menuId===post.confirmedLunchId?'selected':''} data-nm="${escHtml(m.menuNm)}">${escHtml(m.menuNm)}</option>`
+              ).join('')}
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="confirmFromSelect(${meetingPostId})">변경</button>
+            <button class="btn btn-outline-danger btn-sm" onclick="confirmLunch(${meetingPostId}, null, null)">확정 취소</button>
+          </div>
+        </div>` : ''}
+      </div>`;
+
+    // ─ 메뉴 선택 버튼 (세로 배치)
+    // 내 투표가 확정 메뉴 항목 중 하나인지 구분
+    const isMyListItem = myVote && myVote.customYn === 'Y'
+                         && confirmedItems.some(ci => ci.itemNm === myVote.menuNm);
+    const isMyCustom   = myVote && myVote.customYn === 'Y' && !isMyListItem;
+
+    html += `<div class="small fw-semibold text-muted mb-2"><i class="bi bi-hand-index me-1"></i>메뉴를 선택하세요</div>`;
+    html += `<div class="d-flex flex-column gap-2 mb-3">`;
+    if (confirmedItems.length > 0) {
+      confirmedItems.forEach(item => {
+        const selected = !isNotEat && myMenuNm === item.itemNm;
+        html += `
+          <button class="btn ${selected ? 'btn-primary' : 'btn-outline-secondary'} d-flex align-items-center text-start w-100"
+            data-item-nm="${escHtml(item.itemNm)}"
+            onclick="submitLunchVoteItem(this, ${meetingPostId})">
+            <i class="bi bi-${selected ? 'check-circle-fill' : 'circle'} me-2"></i>
+            <span class="flex-grow-1">${escHtml(item.itemNm)}</span>
+            ${selected ? '<i class="bi bi-check-lg ms-auto"></i>' : ''}
+          </button>`;
+      });
+    } else {
+      html += `<div class="text-muted small py-1">등록된 메뉴가 없습니다. 직접 입력해주세요.</div>`;
+    }
+    html += `</div>`;
+
+    // ─ 직접 입력 / 안먹음
+    html += `
+      <div class="d-flex flex-column gap-2 mb-4">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="bi bi-pencil"></i></span>
+          <input type="text" id="customMenuInput" class="form-control ${isMyCustom ? 'border-primary' : ''}"
+            placeholder="직접 입력 (예: 탕수육 추가)"
+            value="${isMyCustom ? escHtml(myVote.menuNm) : ''}" />
+          <button class="btn btn-outline-primary"
+            onclick="submitLunchVote(${meetingPostId}, null, document.getElementById('customMenuInput').value, false)">
+            선택
+          </button>
+        </div>
+        <button class="btn ${isNotEat ? 'btn-secondary' : 'btn-outline-secondary'} w-100"
+          onclick="submitLunchVote(${meetingPostId}, null, null, true)">
+          🚫 안먹음${isNotEat ? ' <i class="bi bi-check-circle-fill ms-1"></i>' : ''}
+        </button>
+      </div>`;
+
+    // ─ 참여 현황
+    if (allVotes.length > 0) {
+      html += `<hr class="my-1" />
+        <div class="small fw-semibold text-muted mb-2 mt-3">
+          <i class="bi bi-people me-1"></i>참여 현황 (${allVotes.length}명)
+        </div>
+        <div class="d-flex flex-column gap-1">`;
+      allVotes.forEach(v => {
+        const isMe = currentUser && v.userId === currentUser.userId;
+        const choice = v.notEatingYn === 'Y' ? '🚫 안먹음' : escHtml(v.menuNm || '-');
+        html += `
+          <div class="d-flex align-items-center gap-2 py-1 px-2 rounded ${isMe ? 'bg-primary-subtle' : 'bg-light'}" style="font-size:.85rem;">
+            <span class="fw-semibold" style="min-width:70px;">${escHtml(v.userNm || v.userId)}</span>
+            <span class="text-muted" style="font-size:.7rem;">→</span>
+            <span>${choice}</span>
+            ${isMe ? '<span class="badge bg-primary ms-auto" style="font-size:.65rem;">나</span>' : ''}
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<p class="text-muted small text-center py-3">데이터 로드 실패</p>'; }
+}
+
+function submitLunchVoteItem(btn, meetingPostId) {
+  const itemNm = btn.getAttribute('data-item-nm');
+  if (!itemNm) { alert('메뉴 정보를 읽을 수 없습니다'); return; }
+  submitLunchVote(meetingPostId, null, itemNm, false);
+}
+
+async function submitLunchVote(meetingPostId, menuId, customMenuNm, notEating) {
+  if (!notEating && !menuId && (!customMenuNm || !String(customMenuNm).trim())) {
+    alert('메뉴명을 입력하세요'); return;
+  }
+  try {
+    const body = { meetingPostId, notEating: !!notEating };
+    if (notEating) { /* 안먹음 */ }
+    else if (customMenuNm) { body.customMenuNm = String(customMenuNm).trim(); }
+    else { body.menuId = menuId; }
+    await api('/api/lunch/vote', { method:'POST', body: JSON.stringify(body) });
+    loadLunchVotes(meetingPostId);
+  } catch(e) { alert('투표 실패'); }
+}
+
+async function loadLunchMenuList() {
+  try {
+    const menus = await api('/api/lunch/menus');
+    const el = document.getElementById('lunchMenuList');
+    const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
+    if (!menus || menus.length === 0) {
+      el.innerHTML = '<p class="text-muted small text-center py-2">등록된 식당이 없습니다</p>'; return;
+    }
+    el.innerHTML = menus.filter(m => m.useYn==='Y').map(m => `
+      <div class="py-2 border-bottom" id="restaurant-row-${m.menuId}">
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="small flex-grow-1">
+            ${m.menuLink
+              ? `<a href="${escHtml(m.menuLink)}" target="_blank" class="text-decoration-none fw-semibold">${escHtml(m.menuNm)} <i class="bi bi-box-arrow-up-right" style="font-size:.7rem;"></i></a>`
+              : `<span class="fw-semibold">${escHtml(m.menuNm)}</span>`}
+          </div>
+          <div class="d-flex gap-1 align-items-center ms-2">
+            <button class="btn btn-link btn-sm p-0 text-muted" style="font-size:.78rem;"
+              onclick="toggleMenuItems(${m.menuId})" title="음식 목록">
+              <i class="bi bi-list-ul"></i>
+            </button>
+            ${isAdmin ? `
+            <button class="btn btn-link btn-sm p-0 text-primary" style="font-size:.75rem;"
+              onclick="editRestaurant(${m.menuId},'${escHtml(m.menuNm)}','${escHtml(m.menuLink||'')}')">수정</button>
+            <button class="btn btn-link btn-sm p-0 text-danger" style="font-size:.75rem;"
+              onclick="deleteRestaurant(${m.menuId})">삭제</button>` : ''}
+          </div>
+        </div>
+        <!-- 음식 목록 (토글) -->
+        <div id="menu-items-${m.menuId}" style="display:none;" class="mt-2 ps-1"></div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function toggleMenuItems(menuId) {
+  const el = document.getElementById('menu-items-' + menuId);
+  if (!el) return;
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = '<span class="text-muted small"><span class="spinner-border spinner-border-sm"></span></span>';
+  await refreshMenuItems(menuId);
+}
+
+async function refreshMenuItems(menuId) {
+  const el = document.getElementById('menu-items-' + menuId);
+  if (!el || el.style.display === 'none') return;
+  try {
+    const items = await api('/api/lunch/menus/' + menuId + '/items');
+    const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
+    let html = '';
+    if (!items || items.length === 0) {
+      html = '<span class="text-muted small">등록된 음식이 없습니다</span>';
+    } else {
+      html = '<div class="d-flex flex-wrap gap-1 mb-2">' +
+        items.map(it => `
+          <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1">
+            ${escHtml(it.itemNm)}
+            ${isAdmin
+              ? `<button type="button" class="btn-close btn-close" style="font-size:.55rem;opacity:.5;"
+                   onclick="deleteMenuItem(${menuId},${it.itemId})"></button>` : ''}
+          </span>`).join('') + '</div>';
+    }
+    if (isAdmin) {
+      html += `<div class="d-flex gap-1 mt-1">
+        <input type="text" id="newItem-${menuId}" class="form-control form-control-sm"
+          placeholder="음식 추가 (예: 짬뽕)" style="max-width:170px;"
+          onkeydown="if(event.key==='Enter') addMenuItem(${menuId})" />
+        <button class="btn btn-outline-primary btn-sm" onclick="addMenuItem(${menuId})">
+          <i class="bi bi-plus"></i>
+        </button>
+      </div>`;
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<span class="text-muted small">로드 실패</span>'; }
+}
+
+async function addMenuItem(menuId) {
+  const input = document.getElementById('newItem-' + menuId);
+  const itemNm = input ? input.value.trim() : '';
+  if (!itemNm) { alert('음식 이름을 입력하세요'); return; }
+  try {
+    await api('/api/lunch/menus/' + menuId + '/items', {
+      method: 'POST', body: JSON.stringify({ itemNm })
+    });
+    if (input) input.value = '';
+    await refreshMenuItems(menuId);
+    // 현재 확정 식당 음식목록도 갱신
+    if (currentLunchMeetingId) loadLunchVotes(currentLunchMeetingId);
+  } catch(e) { alert('추가 실패'); }
+}
+
+async function deleteMenuItem(menuId, itemId) {
+  try {
+    await api('/api/lunch/menus/' + menuId + '/items/' + itemId, { method: 'DELETE' });
+    await refreshMenuItems(menuId);
+    if (currentLunchMeetingId) loadLunchVotes(currentLunchMeetingId);
+  } catch(e) { alert('삭제 실패'); }
+}
+
+function showAddRestaurantForm() {
+  const form = document.getElementById('addRestaurantForm');
+  form.style.display = form.style.display === 'none' ? '' : 'none';
+  if (form.style.display !== 'none') {
+    document.getElementById('newMenuNm').value = '';
+    document.getElementById('newMenuLink').value = '';
+  }
+}
+
+async function addLunchMenu() {
+  const nm   = document.getElementById('newMenuNm').value.trim();
+  const link = document.getElementById('newMenuLink').value.trim();
+  if (!nm) { alert('식당 이름을 입력하세요'); return; }
+  try {
+    await api('/api/lunch/menus', { method:'POST', body: JSON.stringify({ menuNm: nm, menuLink: link||null }) });
+    document.getElementById('addRestaurantForm').style.display = 'none';
+    loadLunchMenuList();
+    if (currentLunchMeetingId) loadLunchVotes(currentLunchMeetingId);
+  } catch(e) { alert('추가 실패'); }
+}
+
+async function editRestaurant(menuId, currentNm, currentLink) {
+  const newNm = prompt('식당 이름', currentNm);
+  if (newNm === null) return;
+  const newLink = prompt('지도 링크 (없으면 비워두세요)', currentLink);
+  if (newLink === null) return;
+  try {
+    await api('/api/lunch/menus/' + menuId, {
+      method:'PUT', body: JSON.stringify({ menuNm: newNm.trim(), menuLink: newLink.trim()||null })
+    });
+    loadLunchMenuList();
+    if (currentLunchMeetingId) loadLunchVotes(currentLunchMeetingId);
+  } catch(e) { alert('수정 실패'); }
+}
+
+async function deleteRestaurant(menuId) {
+  if (!confirm('식당을 삭제하시겠습니까?')) return;
+  try {
+    await api('/api/lunch/menus/' + menuId, { method:'DELETE' });
+    loadLunchMenuList();
+    if (currentLunchMeetingId) loadLunchVotes(currentLunchMeetingId);
+  } catch(e) { alert('삭제 실패'); }
+}
+
+async function confirmLunch(meetingPostId, menuId, menuNm) {
+  const label = menuNm || null;
+  const msg = label ? `"${label}" 메뉴로 확정하시겠습니까?` : '점심 확정을 취소하시겠습니까?';
+  if (!confirm(msg)) return;
+  try {
+    await api('/api/lunch/confirm', {
+      method: 'PUT',
+      body: JSON.stringify({ meetingPostId, menuId: menuId || null, menuNm: menuNm || null })
+    });
+    loadLunchVotes(meetingPostId);
+    loadDashLunch(); // 대시보드 동기화
+  } catch(e) { alert('처리 실패'); }
+}
+
+function confirmFromSelect(meetingPostId) {
+  const sel = document.getElementById('adminRestaurantSelect');
+  if (!sel || !sel.value) { alert('식당을 선택해주세요'); return; }
+  const menuId = parseInt(sel.value);
+  const opt = sel.options[sel.selectedIndex];
+  const menuNm = opt.getAttribute('data-nm') || opt.text;
+  confirmLunch(meetingPostId, menuId, menuNm);
+}
+
+function toggleChangeRestaurant(btn, meetingPostId) {
+  const area = document.getElementById('changeRestaurantArea');
+  if (!area) return;
+  const isHidden = area.style.display === 'none' || area.style.display === '';
+  area.style.display = isHidden ? 'block' : 'none';
+  btn.classList.toggle('active', isHidden);
+}
+
+// ════════════════════════════════
+// ── 활동 기록
+// ════════════════════════════════
+async function loadArchive() {
+  // 관리자만 작성 버튼 표시
+  const btn = document.getElementById('btnWriteArchive');
+  if (currentUser && currentUser.userRole === 'ADMIN') btn.style.display = '';
+  else btn.style.display = 'none';
+
+  try {
+    const posts = await api('/api/posts?type=ACTIVITY');
+    allActivityPosts = posts || [];
+    renderArchiveList(allActivityPosts);
+  } catch(e) {}
+}
+
+function renderArchiveList(posts) {
+  const el = document.getElementById('archiveList');
+  if (!posts || posts.length === 0) {
+    el.innerHTML = '<div class="cop-card text-center text-muted py-5">등록된 활동 기록이 없습니다</div>';
+    return;
+  }
+  const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
+  el.innerHTML = '<div class="cop-card">' + posts.map((p, i) => `
+    <div class="border rounded-3 p-3 mb-3">
+      <div class="d-flex align-items-start justify-content-between">
+        <div style="flex:1;">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge ${i===0?'bg-primary':'bg-secondary'}">${posts.length-i}회차</span>
+            <span class="text-muted small">${p.meetingDt ? fmtDt(p.meetingDt) : fmtDt(p.regDt)}</span>
+          </div>
+          <h6 class="fw-bold mb-1">${escHtml(p.title)}</h6>
+          <p class="text-muted small mb-2" style="white-space:pre-wrap;">${escHtml((p.content||'').substring(0,100))}${(p.content||'').length>100?'...':''}</p>
+        </div>
+        ${isAdmin ? `
+        <div class="d-flex gap-1 flex-column flex-sm-row ms-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="editArchive(${p.postId})"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-outline-danger btn-sm" onclick="deleteArchive(${p.postId})"><i class="bi bi-trash"></i></button>
+        </div>` : ''}
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+function showArchiveForm(post) {
+  document.getElementById('archiveModalTitle').textContent = post ? '활동 기록 수정' : '활동 기록 작성';
+  document.getElementById('archivePostId').value = post ? post.postId : '';
+  document.getElementById('archiveTitle').value = post ? post.title : '';
+  document.getElementById('archiveContent').value = post ? post.content : '';
+  document.getElementById('archiveMeetingDt').value = post && post.meetingDt ? post.meetingDt.substring(0,16) : '';
+  document.getElementById('archiveModal').style.display = 'flex';
+}
+
+function closeArchiveModal() {
+  document.getElementById('archiveModal').style.display = 'none';
+}
+
+async function editArchive(postId) {
+  try {
+    const post = await api('/api/posts/' + postId);
+    showArchiveForm(post);
+  } catch(e) {}
+}
+
+async function deleteArchive(postId) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  try {
+    await api('/api/posts/' + postId, { method:'DELETE' });
+    loadArchive();
+  } catch(e) { alert('삭제 실패'); }
+}
+
+async function submitArchive() {
+  const postId = document.getElementById('archivePostId').value;
+  const title = document.getElementById('archiveTitle').value.trim();
+  const content = document.getElementById('archiveContent').value.trim();
+  const meetingDt = document.getElementById('archiveMeetingDt').value;
+  if (!title) { alert('제목을 입력하세요'); return; }
+  const body = { postType:'ACTIVITY', title, content, meetingDt: meetingDt ? meetingDt+':00' : null };
+  try {
+    if (postId) {
+      await api('/api/posts/' + postId, { method:'PUT', body: JSON.stringify(body) });
+    } else {
+      await api('/api/posts', { method:'POST', body: JSON.stringify(body) });
+    }
+    closeArchiveModal();
+    loadArchive();
+  } catch(e) { alert('저장 실패'); }
+}
+
+// ════════════════════════════════
+// ── 자유 게시판
+// ════════════════════════════════
+async function loadBoard() {
+  try {
+    const posts = await api('/api/posts?type=FREE');
+    const el = document.getElementById('boardListItems');
+    if (!posts || posts.length === 0) {
+      el.innerHTML = '<p class="text-muted small text-center py-3">게시글이 없습니다. 첫 글을 작성해보세요!</p>';
+      return;
+    }
+    el.innerHTML = posts.map(p => `
+      <div class="board-row" style="cursor:pointer;" onclick="openPost(${p.postId})">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <span class="fw-semibold">${escHtml(p.title)}</span>
+            <div class="text-muted small mt-1">${escHtml(p.writerNm||p.writerId)} · ${fmtDt(p.regDt)} · 댓글 <strong>${p.commentCount||0}</strong></div>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function openPost(postId) {
+  currentPostId = postId;
+  try {
+    const p = await api('/api/posts/' + postId);
+    document.getElementById('detailTitle').textContent = p.title;
+    document.getElementById('detailMeta').textContent =
+      (p.writerNm||p.writerId) + ' (' + p.writerId + ') · ' + fmtDtFull(p.regDt);
+    document.getElementById('detailContent').textContent = p.content || '';
+
+    // 첨부파일 표시
+    const filesEl = document.getElementById('detailFiles');
+    const fileListEl = document.getElementById('detailFileList');
+    const files = p.files || [];
+    if (files.length > 0) {
+      const isOwner2 = currentUser && (currentUser.userId === p.writerId || currentUser.userRole === 'ADMIN');
+      fileListEl.innerHTML = files.map(f => `
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <i class="bi bi-file-earmark text-primary"></i>
+          <a href="/api/files/download/${f.fileId}" class="small text-decoration-none">${escHtml(f.orgNm)}</a>
+          <span class="text-muted" style="font-size:.75rem;">(${(f.fileSize/1024).toFixed(1)}KB)</span>
+          ${isOwner2 ? `<button class="btn btn-link btn-sm p-0 text-danger" style="font-size:.75rem;" onclick="deleteFile(${f.fileId})">삭제</button>` : ''}
+        </div>`).join('');
+      filesEl.style.display = '';
+    } else {
+      filesEl.style.display = 'none';
+    }
+
+    // 수정/삭제 버튼 (본인 or 관리자)
+    const isOwner = currentUser && (currentUser.userId === p.writerId || currentUser.userRole === 'ADMIN');
+    const actionsEl = document.getElementById('detailActions');
+    actionsEl.innerHTML = isOwner ? `
+      <button class="btn btn-sm btn-outline-secondary" onclick="startEditPost(${postId})"><i class="bi bi-pencil me-1"></i>수정</button>
+      <button class="btn btn-sm btn-outline-danger" onclick="deletePost(${postId})"><i class="bi bi-trash me-1"></i>삭제</button>` : '';
+
+    document.getElementById('boardList').style.display   = 'none';
+    document.getElementById('boardDetail').style.display = '';
+    document.getElementById('boardWrite').style.display  = 'none';
+
+    loadComments(postId);
+  } catch(e) { alert('글을 불러오지 못했습니다'); }
+}
+
+function backToList() {
+  document.getElementById('boardList').style.display   = '';
+  document.getElementById('boardDetail').style.display = 'none';
+  document.getElementById('boardWrite').style.display  = 'none';
+  currentPostId = null;
+}
+
+function showBoardWrite() {
+  document.getElementById('boardWriteTitle').textContent = '새 글 작성';
+  document.getElementById('editPostId').value = '';
+  document.getElementById('writeTitle').value = '';
+  document.getElementById('writeContent').value = '';
+  document.getElementById('writeFiles').value = '';
+  document.getElementById('fileInputArea').style.display = ''; // 새 글쓰기 시 파일 표시
+  document.getElementById('boardList').style.display   = 'none';
+  document.getElementById('boardDetail').style.display = 'none';
+  document.getElementById('boardWrite').style.display  = '';
+}
+
+async function startEditPost(postId) {
+  try {
+    const p = await api('/api/posts/' + postId);
+    document.getElementById('boardWriteTitle').textContent = '글 수정';
+    document.getElementById('editPostId').value = postId;
+    document.getElementById('writeTitle').value = p.title;
+    document.getElementById('writeContent').value = p.content || '';
+    document.getElementById('fileInputArea').style.display = 'none'; // 수정 시 파일 업로드 숨김
+    document.getElementById('boardList').style.display   = 'none';
+    document.getElementById('boardDetail').style.display = 'none';
+    document.getElementById('boardWrite').style.display  = '';
+  } catch(e) {}
+}
+
+async function submitPost() {
+  const postId = document.getElementById('editPostId').value;
+  const title = document.getElementById('writeTitle').value.trim();
+  const content = document.getElementById('writeContent').value.trim();
+  if (!title) { alert('제목을 입력하세요'); return; }
+  const body = { postType:'FREE', title, content };
+  try {
+    let saved;
+    if (postId) {
+      saved = await api('/api/posts/' + postId, { method:'PUT', body: JSON.stringify(body) });
+    } else {
+      saved = await api('/api/posts', { method:'POST', body: JSON.stringify(body) });
+    }
+    // 파일 업로드 (신규 글쓰기 시만)
+    if (!postId && saved && saved.postId) {
+      const fileInput = document.getElementById('writeFiles');
+      if (fileInput.files.length > 0) {
+        await uploadFiles(saved.postId, fileInput.files);
+      }
+    }
+    backToList();
+    loadBoard();
+  } catch(e) { alert('저장 실패'); }
+}
+
+async function uploadFiles(postId, files) {
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('postId', postId);
+    fd.append('file', file);
+    await fetch('/api/files/upload', { method:'POST', body: fd, credentials:'same-origin' });
+  }
+}
+
+async function deleteFile(fileId) {
+  if (!confirm('파일을 삭제하시겠습니까?')) return;
+  try {
+    await api('/api/files/' + fileId, { method:'DELETE' });
+    openPost(currentPostId); // 새로고침
+  } catch(e) { alert('파일 삭제 실패'); }
+}
+
+async function deletePost(postId) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  try {
+    await api('/api/posts/' + postId, { method:'DELETE' });
+    backToList();
+    loadBoard();
+  } catch(e) { alert('삭제 실패'); }
+}
+
+// ── 댓글
+async function loadComments(postId) {
+  try {
+    const comments = await api('/api/posts/' + postId + '/comments');
+    document.getElementById('commentCount').textContent = (comments||[]).length;
+    const el = document.getElementById('commentList');
+    if (!comments || comments.length === 0) {
+      el.innerHTML = '<p class="text-muted small">첫 댓글을 남겨보세요!</p>';
+      return;
+    }
+    el.innerHTML = comments.map(c => {
+      const isOwner = currentUser && (currentUser.userId === c.writerId || currentUser.userRole === 'ADMIN');
+      const isWriter = currentPostId !== null; // 게시글 작성자 여부는 별도 체크 필요
+      return `
+        <div class="comment-box ${c.parentId ? 'sub' : ''}">
+          <div class="d-flex justify-content-between align-items-start">
+            <strong class="small">${escHtml(c.writerNm||c.writerId)}</strong>
+            <div class="d-flex align-items-center gap-2">
+              <span class="text-muted" style="font-size:.75rem;">${fmtDtFull(c.regDt)}</span>
+              ${isOwner ? `<button class="btn btn-link btn-sm p-0 text-danger" style="font-size:.75rem;" onclick="deleteComment(${c.commentId})">삭제</button>` : ''}
+            </div>
+          </div>
+          <div class="small mt-1">${escHtml(c.content)}</div>
+        </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function submitComment() {
+  const content = document.getElementById('commentInput').value.trim();
+  if (!content) { alert('댓글 내용을 입력하세요'); return; }
+  try {
+    await api('/api/posts/' + currentPostId + '/comments', {
+      method: 'POST', body: JSON.stringify({ content })
+    });
+    document.getElementById('commentInput').value = '';
+    loadComments(currentPostId);
+  } catch(e) { alert('댓글 등록 실패'); }
+}
+
+async function deleteComment(commentId) {
+  if (!confirm('댓글을 삭제하시겠습니까?')) return;
+  try {
+    await api('/api/posts/' + currentPostId + '/comments/' + commentId, { method:'DELETE' });
+    loadComments(currentPostId);
+  } catch(e) { alert('삭제 실패'); }
+}
+
+// ════════════════════════════════
+// ── 멤버 관리 (관리자)
+// ════════════════════════════════
+async function loadMembers() {
+  try {
+    const users = await api('/api/users');
+    const tbody = document.getElementById('membersTable');
+    if (!users || users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">멤버 없음</td></tr>';
+      return;
+    }
+    tbody.innerHTML = users.map(u => {
+      const isMe = currentUser && u.userId === currentUser.userId;
+      const isAdmin = u.userRole === 'ADMIN';
+      return `<tr>
+        <td>${escHtml(u.userId)}</td>
+        <td><strong>${escHtml(u.userNm)}</strong>${isMe ? ' <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.68rem;">나</span>' : ''}</td>
+        <td>${isAdmin ? '<span class="badge bg-primary">운영자</span>' : '<span class="badge bg-secondary">멤버</span>'}</td>
+        <td class="text-muted small">${fmtDt(u.regDt)}</td>
+        <td>${isMe ? '<span class="text-muted small">-</span>' : `
+          <div class="d-flex gap-1">
+            <button class="btn btn-outline-${isAdmin ? 'secondary' : 'primary'} btn-sm" style="font-size:.75rem;"
+              onclick="toggleRole('${u.userId}','${isAdmin ? 'USER' : 'ADMIN'}')">
+              ${isAdmin ? '멤버로' : '운영자로'}
+            </button>
+            <button class="btn btn-outline-danger btn-sm" style="font-size:.75rem;" onclick="deleteMember('${u.userId}','${escHtml(u.userNm)}')">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>`}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function toggleRole(userId, newRole) {
+  if (!confirm(`${userId} 의 권한을 "${newRole === 'ADMIN' ? '운영자' : '멤버'}"로 변경하시겠습니까?`)) return;
+  try {
+    await api(`/api/users/${userId}/role`, { method:'PUT', body: JSON.stringify({userRole: newRole}) });
+    loadMembers();
+  } catch(e) { alert('권한 변경 실패'); }
+}
+
+async function deleteMember(userId, userNm) {
+  if (!confirm(`[${userNm}] 멤버를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+  try {
+    await api(`/api/users/${userId}`, { method:'DELETE' });
+    loadMembers();
+  } catch(e) { alert('삭제 실패'); }
+}
+
+// ── 페이지 로드 시 세션 확인
+(async function() {
+  try {
+    const user = await api('/api/auth/me');
+    afterLogin(user);
+  } catch(e) {
+    // 미로그인 상태 → 로그인 화면 유지
+  }
+})();
+</script>
+</body>
+</html>
