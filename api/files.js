@@ -1,10 +1,9 @@
-const { getPool } = require('../../lib/db');
-const { getUser } = require('../../lib/auth');
-const cors        = require('../../lib/cors');
+const { getPool } = require('../lib/db');
+const { getUser } = require('../lib/auth');
+const cors        = require('../lib/cors');
 
 module.exports = async (req, res) => {
   if (cors(req, res)) return;
-  const u    = getUser(req);
   const pool = getPool();
 
   if (req.method === 'GET') {
@@ -19,6 +18,5 @@ module.exports = async (req, res) => {
     })));
   }
 
-  // 파일 업로드/삭제는 별도 스토리지 연동 필요 (현재 미지원)
   res.status(501).json({ error: '파일 업로드는 추후 지원 예정입니다.' });
 };

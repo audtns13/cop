@@ -1062,7 +1062,7 @@ async function doLogin() {
   const errEl = document.getElementById('loginError');
   errEl.classList.add('d-none');
   try {
-    const user = await api('/api/auth/login', {
+    const user = await api('/api/auth?action=login', {
       method: 'POST',
       body: JSON.stringify({ userId, userPwd })
     });
@@ -1086,7 +1086,7 @@ async function doRegister() {
   if (userPwd !== userPwd2) { errEl.textContent = '비밀번호가 일치하지 않습니다.'; errEl.classList.remove('d-none'); return; }
 
   try {
-    await api('/api/auth/register', { method:'POST', body: JSON.stringify({userId, userNm, userPwd}) });
+    await api('/api/auth?action=register', { method:'POST', body: JSON.stringify({userId, userNm, userPwd}) });
     alert(`${userNm}님, 가입이 완료되었습니다!\n로그인해 주세요.`);
     document.getElementById('loginId').value = userId;
     switchAuth('login');
@@ -1100,7 +1100,7 @@ async function doRegister() {
 
 // ── 로그아웃
 async function doLogout() {
-  await api('/api/auth/logout', { method:'POST' }).catch(()=>{});
+  await api('/api/auth?action=logout', { method:'POST' }).catch(()=>{});
   currentUser = null;
   document.getElementById('appSection').style.display   = 'none';
   document.getElementById('loginSection').style.display = 'flex';
@@ -1147,7 +1147,7 @@ function afterLogin(user) {
 // ── 공지 팝업
 async function loadNoticePopup() {
   try {
-    const p = await api('/api/posts/notice/popup');
+    const p = await api('/api/posts?popup=1');
     if (!p) return;
     document.getElementById('popupTitle').textContent   = p.title;
     document.getElementById('popupContent').textContent = p.content;
@@ -1265,7 +1265,7 @@ async function loadDashLunch() {
       return;
     }
     const next = upcoming[0];
-    const data = await api('/api/lunch/votes?meetingPostId=' + next.postId);
+    const data = await api('/api/lunch?resource=votes&meetingPostId=' + next.postId);
     const summary = (data && data.summary) || [];
     let html = '';
     if (next.confirmedLunchNm) {
@@ -1330,7 +1330,7 @@ async function loadDashActivity() {
 
 async function loadDashAttendStats() {
   try {
-    const stats = await api('/api/attendance/stats');
+    const stats = await api('/api/attendance?action=stats');
     const tbody = document.getElementById('dashAttendTable');
     if (!stats || stats.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">데이터 없음</td></tr>';
@@ -1356,7 +1356,7 @@ async function loadDashAttendStats() {
 
 async function loadMyActivity() {
   try {
-    const my = await api('/api/attendance/my');
+    const my = await api('/api/attendance?action=my');
     const el = document.getElementById('myActivitySummary');
     const rate = my.attendRate || 0;
     const pct = Math.round(rate * 3.6) + 'deg';
@@ -1397,8 +1397,8 @@ async function loadAttendance() {
   try {
     const [posts, stats, mine] = await Promise.all([
       api('/api/posts?type=ACTIVITY'),
-      api('/api/attendance/stats'),
-      api('/api/attendance/mine')
+      api('/api/attendance?action=stats'),
+      api('/api/attendance?action=mine')
     ]);
     allActivityPosts = posts || [];
     myAttendMap = mine || {};
@@ -1478,7 +1478,7 @@ function renderAttendStats(stats) {
 
 async function voteAttendance(postId, status, btn) {
   try {
-    await api('/api/attendance/vote', { method:'POST', body: JSON.stringify({postId, status}) });
+    await api('/api/attendance', { method:'POST', body: JSON.stringify({postId, status}) });
     myAttendMap[postId] = status;
     const card = btn.closest('.border');
     const [yBtn, nBtn] = card.querySelectorAll('.btn-sm.flex-fill');
@@ -1486,7 +1486,7 @@ async function voteAttendance(postId, status, btn) {
     yBtn.innerHTML = `<i class="bi bi-check-circle me-1"></i>참석${status==='Y' ? ' ✓' : ''}`;
     nBtn.className = `btn btn-sm flex-fill ${status==='N' ? 'btn-danger' : 'btn-outline-danger'}`;
     nBtn.innerHTML = `<i class="bi bi-x-circle me-1"></i>불참${status==='N' ? ' ✓' : ''}`;
-    api('/api/attendance/stats').then(stats => renderAttendStats(stats));
+    api('/api/attendance?action=stats').then(stats => renderAttendStats(stats));
   } catch(e) { alert('투표 실패'); }
 }
 
@@ -1546,9 +1546,9 @@ async function loadLunchVotes(meetingPostId) {
   el.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></div>';
   try {
     const [data, allMenus, post] = await Promise.all([
-      api('/api/lunch/votes?meetingPostId=' + meetingPostId),
-      api('/api/lunch/menus'),
-      api('/api/posts/' + meetingPostId)
+      api('/api/lunch?resource=votes&meetingPostId=' + meetingPostId),
+      api('/api/lunch?resource=menus'),
+      api('/api/posts?id=' + meetingPostId)
     ]);
     const allVotes = data.allVotes || [];
     const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
@@ -1595,7 +1595,7 @@ async function loadLunchVotes(meetingPostId) {
     // 확정 식당 음식 목록
     let confirmedItems = [];
     if (post.confirmedLunchId) {
-      confirmedItems = await api('/api/lunch/menus/' + post.confirmedLunchId + '/items').catch(() => []);
+      confirmedItems = await api('/api/lunch?resource=items&menuId=' + post.confirmedLunchId).catch(() => []);
     }
     const confirmedMenu = (allMenus||[]).find(m => m.menuId === post.confirmedLunchId);
     const restaurantLink = confirmedMenu && confirmedMenu.menuLink
@@ -1719,14 +1719,14 @@ async function submitLunchVote(meetingPostId, menuId, customMenuNm, notEating) {
     if (notEating) { /* 안먹음 */ }
     else if (customMenuNm) { body.customMenuNm = String(customMenuNm).trim(); }
     else { body.menuId = menuId; }
-    await api('/api/lunch/vote', { method:'POST', body: JSON.stringify(body) });
+    await api('/api/lunch?resource=vote', { method:'POST', body: JSON.stringify(body) });
     loadLunchVotes(meetingPostId);
   } catch(e) { alert('투표 실패'); }
 }
 
 async function loadLunchMenuList() {
   try {
-    const menus = await api('/api/lunch/menus');
+    const menus = await api('/api/lunch?resource=menus');
     const el = document.getElementById('lunchMenuList');
     const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
     if (!menus || menus.length === 0) {
@@ -1771,7 +1771,7 @@ async function refreshMenuItems(menuId) {
   const el = document.getElementById('menu-items-' + menuId);
   if (!el || el.style.display === 'none') return;
   try {
-    const items = await api('/api/lunch/menus/' + menuId + '/items');
+    const items = await api('/api/lunch?resource=items&menuId=' + menuId);
     const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
     let html = '';
     if (!items || items.length === 0) {
@@ -1805,7 +1805,7 @@ async function addMenuItem(menuId) {
   const itemNm = input ? input.value.trim() : '';
   if (!itemNm) { alert('음식 이름을 입력하세요'); return; }
   try {
-    await api('/api/lunch/menus/' + menuId + '/items', {
+    await api('/api/lunch?resource=items&menuId=' + menuId, {
       method: 'POST', body: JSON.stringify({ itemNm })
     });
     if (input) input.value = '';
@@ -1817,7 +1817,7 @@ async function addMenuItem(menuId) {
 
 async function deleteMenuItem(menuId, itemId) {
   try {
-    await api('/api/lunch/menus/' + menuId + '/items/' + itemId, { method: 'DELETE' });
+    await api('/api/lunch?resource=items&itemId=' + itemId, { method: 'DELETE' });
     await refreshMenuItems(menuId);
     if (currentLunchMeetingId) loadLunchVotes(currentLunchMeetingId);
   } catch(e) { alert('삭제 실패'); }
@@ -1837,7 +1837,7 @@ async function addLunchMenu() {
   const link = document.getElementById('newMenuLink').value.trim();
   if (!nm) { alert('식당 이름을 입력하세요'); return; }
   try {
-    await api('/api/lunch/menus', { method:'POST', body: JSON.stringify({ menuNm: nm, menuLink: link||null }) });
+    await api('/api/lunch?resource=menus', { method:'POST', body: JSON.stringify({ menuNm: nm, menuLink: link||null }) });
     document.getElementById('addRestaurantForm').style.display = 'none';
     loadLunchMenuList();
     if (currentLunchMeetingId) loadLunchVotes(currentLunchMeetingId);
@@ -1850,7 +1850,7 @@ async function editRestaurant(menuId, currentNm, currentLink) {
   const newLink = prompt('지도 링크 (없으면 비워두세요)', currentLink);
   if (newLink === null) return;
   try {
-    await api('/api/lunch/menus/' + menuId, {
+    await api('/api/lunch?resource=menus&menuId=' + menuId, {
       method:'PUT', body: JSON.stringify({ menuNm: newNm.trim(), menuLink: newLink.trim()||null })
     });
     loadLunchMenuList();
@@ -1861,7 +1861,7 @@ async function editRestaurant(menuId, currentNm, currentLink) {
 async function deleteRestaurant(menuId) {
   if (!confirm('식당을 삭제하시겠습니까?')) return;
   try {
-    await api('/api/lunch/menus/' + menuId, { method:'DELETE' });
+    await api('/api/lunch?resource=menus&menuId=' + menuId, { method:'DELETE' });
     loadLunchMenuList();
     if (currentLunchMeetingId) loadLunchVotes(currentLunchMeetingId);
   } catch(e) { alert('삭제 실패'); }
@@ -1872,7 +1872,7 @@ async function confirmLunch(meetingPostId, menuId, menuNm) {
   const msg = label ? `"${label}" 메뉴로 확정하시겠습니까?` : '점심 확정을 취소하시겠습니까?';
   if (!confirm(msg)) return;
   try {
-    await api('/api/lunch/confirm', {
+    await api('/api/lunch?resource=confirm', {
       method: 'PUT',
       body: JSON.stringify({ meetingPostId, menuId: menuId || null, menuNm: menuNm || null })
     });
@@ -1956,7 +1956,7 @@ function closeArchiveModal() {
 
 async function editArchive(postId) {
   try {
-    const post = await api('/api/posts/' + postId);
+    const post = await api('/api/posts?id=' + postId);
     showArchiveForm(post);
   } catch(e) {}
 }
@@ -1964,7 +1964,7 @@ async function editArchive(postId) {
 async function deleteArchive(postId) {
   if (!confirm('삭제하시겠습니까?')) return;
   try {
-    await api('/api/posts/' + postId, { method:'DELETE' });
+    await api('/api/posts?id=' + postId, { method:'DELETE' });
     loadArchive();
   } catch(e) { alert('삭제 실패'); }
 }
@@ -1978,7 +1978,7 @@ async function submitArchive() {
   const body = { postType:'ACTIVITY', title, content, meetingDt: meetingDt ? meetingDt+':00' : null };
   try {
     if (postId) {
-      await api('/api/posts/' + postId, { method:'PUT', body: JSON.stringify(body) });
+      await api('/api/posts?id=' + postId, { method:'PUT', body: JSON.stringify(body) });
     } else {
       await api('/api/posts', { method:'POST', body: JSON.stringify(body) });
     }
@@ -2013,7 +2013,7 @@ async function loadBoard() {
 async function openPost(postId) {
   currentPostId = postId;
   try {
-    const p = await api('/api/posts/' + postId);
+    const p = await api('/api/posts?id=' + postId);
     document.getElementById('detailTitle').textContent = p.title;
     document.getElementById('detailMeta').textContent =
       (p.writerNm||p.writerId) + ' (' + p.writerId + ') · ' + fmtDtFull(p.regDt);
@@ -2073,7 +2073,7 @@ function showBoardWrite() {
 
 async function startEditPost(postId) {
   try {
-    const p = await api('/api/posts/' + postId);
+    const p = await api('/api/posts?id=' + postId);
     document.getElementById('boardWriteTitle').textContent = '글 수정';
     document.getElementById('editPostId').value = postId;
     document.getElementById('writeTitle').value = p.title;
@@ -2094,7 +2094,7 @@ async function submitPost() {
   try {
     let saved;
     if (postId) {
-      saved = await api('/api/posts/' + postId, { method:'PUT', body: JSON.stringify(body) });
+      saved = await api('/api/posts?id=' + postId, { method:'PUT', body: JSON.stringify(body) });
     } else {
       saved = await api('/api/posts', { method:'POST', body: JSON.stringify(body) });
     }
@@ -2130,7 +2130,7 @@ async function deleteFile(fileId) {
 async function deletePost(postId) {
   if (!confirm('삭제하시겠습니까?')) return;
   try {
-    await api('/api/posts/' + postId, { method:'DELETE' });
+    await api('/api/posts?id=' + postId, { method:'DELETE' });
     backToList();
     loadBoard();
   } catch(e) { alert('삭제 실패'); }
@@ -2139,7 +2139,7 @@ async function deletePost(postId) {
 // ── 댓글
 async function loadComments(postId) {
   try {
-    const comments = await api('/api/posts/' + postId + '/comments');
+    const comments = await api(`/api/comments?postId=${postId}`);
     document.getElementById('commentCount').textContent = (comments||[]).length;
     const el = document.getElementById('commentList');
     if (!comments || comments.length === 0) {
@@ -2168,7 +2168,7 @@ async function submitComment() {
   const content = document.getElementById('commentInput').value.trim();
   if (!content) { alert('댓글 내용을 입력하세요'); return; }
   try {
-    await api('/api/posts/' + currentPostId + '/comments', {
+    await api(`/api/comments?postId=${currentPostId}`, {
       method: 'POST', body: JSON.stringify({ content })
     });
     document.getElementById('commentInput').value = '';
@@ -2179,7 +2179,7 @@ async function submitComment() {
 async function deleteComment(commentId) {
   if (!confirm('댓글을 삭제하시겠습니까?')) return;
   try {
-    await api('/api/posts/' + currentPostId + '/comments/' + commentId, { method:'DELETE' });
+    await api(`/api/comments?commentId=${commentId}`, { method:'DELETE' });
     loadComments(currentPostId);
   } catch(e) { alert('삭제 실패'); }
 }
@@ -2222,7 +2222,7 @@ async function loadMembers() {
 async function toggleRole(userId, newRole) {
   if (!confirm(`${userId} 의 권한을 "${newRole === 'ADMIN' ? '운영자' : '멤버'}"로 변경하시겠습니까?`)) return;
   try {
-    await api(`/api/users/${userId}/role`, { method:'PUT', body: JSON.stringify({userRole: newRole}) });
+    await api(`/api/users?id=${userId}&action=role`, { method:'PUT', body: JSON.stringify({userRole: newRole}) });
     loadMembers();
   } catch(e) { alert('권한 변경 실패'); }
 }
@@ -2230,7 +2230,7 @@ async function toggleRole(userId, newRole) {
 async function deleteMember(userId, userNm) {
   if (!confirm(`[${userNm}] 멤버를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
   try {
-    await api(`/api/users/${userId}`, { method:'DELETE' });
+    await api(`/api/users?id=${userId}`, { method:'DELETE' });
     loadMembers();
   } catch(e) { alert('삭제 실패'); }
 }
@@ -2238,7 +2238,7 @@ async function deleteMember(userId, userNm) {
 // ── 페이지 로드 시 세션 확인
 (async function() {
   try {
-    const user = await api('/api/auth/me');
+    const user = await api('/api/auth?action=me');
     afterLogin(user);
   } catch(e) {
     // 미로그인 상태 → 로그인 화면 유지
