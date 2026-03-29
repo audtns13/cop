@@ -2150,7 +2150,9 @@ async function deleteMember(userId, userNm) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const COUNT = 100, MAX_DIST = 180, MOUSE_DIST = 220;
+  const CLICK_RADIUS = 200, CLICK_FORCE = 12;
   let W, H, particles = [], mouse = { x: -9999, y: -9999 };
+  let ripples = []; // 클릭 파문 효과
 
   function init() {
     W = canvas.width  = window.innerWidth;
@@ -2166,15 +2168,45 @@ async function deleteMember(userId, userNm) {
     }
   }
 
+  /* 클릭 시 파티클 밀어내기 */
+  function scatter(cx, cy) {
+    /* 파문 링 추가 */
+    ripples.push({ x: cx, y: cy, r: 0, maxR: CLICK_RADIUS, alpha: 1 });
+
+    for (const p of particles) {
+      const dx = p.x - cx, dy = p.y - cy;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < CLICK_RADIUS && d > 0) {
+        const force = (1 - d / CLICK_RADIUS) * CLICK_FORCE;
+        p.vx += (dx / d) * force;
+        p.vy += (dy / d) * force;
+      }
+    }
+  }
+
   function draw() {
-    /* 어두운 배경을 canvas 자체에서 그려서 body 배경 불필요 */
     ctx.fillStyle = '#06080F';
     ctx.fillRect(0, 0, W, H);
 
+    /* 파티클 이동 + 속도 감쇠 */
     for (const p of particles) {
+      p.vx *= 0.96;
+      p.vy *= 0.96;
       p.x += p.vx; p.y += p.vy;
       if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
       if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+    }
+
+    /* 파문 링 업데이트 & 그리기 */
+    ripples = ripples.filter(rp => rp.alpha > 0.01);
+    for (const rp of ripples) {
+      rp.r  += (rp.maxR - rp.r) * 0.08;
+      rp.alpha *= 0.88;
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(100,180,255,${rp.alpha * 0.8})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
 
     /* 연결선 */
@@ -2211,9 +2243,11 @@ async function deleteMember(userId, userNm) {
       const mdx = p.x - mouse.x, mdy = p.y - mouse.y;
       const md = Math.sqrt(mdx*mdx + mdy*mdy);
       const glow = md < MOUSE_DIST ? (1 - md/MOUSE_DIST) : 0;
+      const speed = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+      const boost = Math.min(speed / CLICK_FORCE, 1); // 빠를수록 밝게
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r + glow * 2, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${100 + Math.round(glow*80)},${165 + Math.round(glow*45)},255,${0.8 + glow * 0.2})`;
+      ctx.arc(p.x, p.y, p.r + glow * 2 + boost * 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${100 + Math.round((glow+boost)*80)},${165 + Math.round((glow+boost)*45)},255,${0.8 + (glow+boost) * 0.2})`;
       ctx.fill();
     }
 
@@ -2226,8 +2260,14 @@ async function deleteMember(userId, userNm) {
     mouse.y = e.clientY - rect.top;
   });
   document.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
-  window.addEventListener('resize', init);
 
+  /* 클릭 이벤트 - 모든 요소에서 캡처 */
+  window.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    scatter(e.clientX - rect.left, e.clientY - rect.top);
+  }, true);
+
+  window.addEventListener('resize', init);
   init();
   draw();
 })();
