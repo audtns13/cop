@@ -27,7 +27,7 @@
 
     /* 로그인 */
     #loginSection { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg-main); position:relative; overflow:hidden; }
-    #globeCanvas { position:absolute; inset:0; width:100%; height:100%; opacity:.4; pointer-events:none; }
+    #globeCanvas { position:absolute; inset:0; width:100%; height:100%; opacity:.85; pointer-events:auto; }
     .login-wrap { position:relative; z-index:10; display:flex; align-items:center; justify-content:center; gap:5rem; width:100%; max-width:960px; padding:2rem; }
     .login-hero { flex:1; max-width:440px; color:#fff; }
     .login-hero-tag { display:inline-flex; align-items:center; gap:.4rem; font-size:.72rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--primary); border:1px solid rgba(0,89,214,.4); border-radius:2rem; padding:.35rem .9rem; margin-bottom:1.5rem; }
@@ -2139,93 +2139,99 @@ async function deleteMember(userId, userNm) {
 </script>
 
 <script>
-/* ── Globe Canvas Animation ───────────────────────────────────── */
+/* ── Particle Network Animation ───────────────────────────────── */
 (function() {
   const canvas = document.getElementById('globeCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  let W, H, cx, cy, R, pts = [], rot = 0;
+  let W, H, particles = [], mouse = { x: -9999, y: -9999 };
+  const COUNT = 90;
+  const MAX_DIST = 160;
+  const MOUSE_DIST = 200;
 
   function resize() {
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
-    cx = W / 2; cy = H / 2;
-    R = Math.min(W, H) * 0.38;
-    buildPts();
+    initParticles();
   }
 
-  function buildPts() {
-    pts = [];
-    const latLines = 14, lngLines = 20;
-    const segs = 60;
-    // latitude circles
-    for (let i = 1; i < latLines; i++) {
-      const lat = (i / latLines) * Math.PI - Math.PI / 2;
-      const r2 = Math.cos(lat) * R;
-      const y0 = Math.sin(lat) * R;
-      for (let j = 0; j <= segs; j++) {
-        const a = (j / segs) * Math.PI * 2;
-        pts.push({ x: Math.cos(a) * r2, y: y0, z: Math.sin(a) * r2, type: 'lat', seg: j === 0 });
-      }
+  function initParticles() {
+    particles = [];
+    for (let i = 0; i < COUNT; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        r: Math.random() * 1.5 + 1
+      });
     }
-    // longitude circles
-    for (let i = 0; i < lngLines; i++) {
-      const lng = (i / lngLines) * Math.PI;
-      for (let j = 0; j <= segs; j++) {
-        const a = (j / segs) * Math.PI * 2;
-        const x0 = Math.cos(a) * R;
-        const y0 = Math.sin(a) * R;
-        pts.push({ x: Math.cos(lng) * x0, y: y0, z: Math.sin(lng) * x0, type: 'lng', seg: j === 0 });
-      }
-    }
-  }
-
-  function project(p) {
-    const cosR = Math.cos(rot), sinR = Math.sin(rot);
-    const x3 = p.x * cosR - p.z * sinR;
-    const z3 = p.x * sinR + p.z * cosR;
-    const scale = 1;
-    return { sx: cx + x3 * scale, sy: cy + p.y * scale, z: z3 };
   }
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    const segs = 60 + 1;
-    let i = 0;
-    // draw lat lines
-    const latLines = 14;
-    for (let l = 1; l < latLines; l++) {
-      ctx.beginPath();
-      for (let j = 0; j <= 60; j++) {
-        const p = pts[i++];
-        const pr = project(p);
-        const alpha = (pr.z / R + 1) / 2;
-        if (j === 0) ctx.moveTo(pr.sx, pr.sy);
-        else ctx.lineTo(pr.sx, pr.sy);
-      }
-      ctx.strokeStyle = `rgba(0,120,255,${0.08 + alpha * 0.18})`;
-      ctx.lineWidth = 0.7;
-      ctx.stroke();
+
+    // update positions
+    for (const p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
     }
-    // draw lng lines
-    const lngLines = 20;
-    for (let l = 0; l < lngLines; l++) {
-      ctx.beginPath();
-      let alpha = 0.1;
-      for (let j = 0; j <= 60; j++) {
-        const p = pts[i++];
-        const pr = project(p);
-        alpha = (pr.z / R + 1) / 2;
-        if (j === 0) ctx.moveTo(pr.sx, pr.sy);
-        else ctx.lineTo(pr.sx, pr.sy);
+
+    // draw connections
+    for (let i = 0; i < particles.length; i++) {
+      const a = particles[i];
+      for (let j = i + 1; j < particles.length; j++) {
+        const b = particles[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MAX_DIST) {
+          const alpha = (1 - dist / MAX_DIST) * 0.35;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = `rgba(0, 120, 255, ${alpha})`;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
       }
-      ctx.strokeStyle = `rgba(0,120,255,${0.08 + alpha * 0.18})`;
-      ctx.lineWidth = 0.7;
-      ctx.stroke();
+      // mouse connections
+      const mdx = a.x - mouse.x, mdy = a.y - mouse.y;
+      const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+      if (mdist < MOUSE_DIST) {
+        const alpha = (1 - mdist / MOUSE_DIST) * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(mouse.x, mouse.y);
+        ctx.strokeStyle = `rgba(80, 160, 255, ${alpha})`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
     }
-    rot += 0.003;
+
+    // draw dots
+    for (const p of particles) {
+      const mdx = p.x - mouse.x, mdy = p.y - mouse.y;
+      const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+      const glow = mdist < MOUSE_DIST ? (1 - mdist / MOUSE_DIST) : 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + glow * 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${80 + Math.round(glow * 100)}, ${140 + Math.round(glow * 60)}, 255, ${0.55 + glow * 0.4})`;
+      ctx.fill();
+    }
+
     requestAnimationFrame(draw);
   }
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+  });
+  canvas.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
 
   window.addEventListener('resize', resize);
   resize();
