@@ -7,7 +7,8 @@ function toPost(r) {
     postId: r.post_id, postType: r.post_type, title: r.title, content: r.content,
     writerId: r.writer_id, writerNm: r.writer_nm, meetingDt: r.meeting_dt,
     viewCnt: r.view_cnt, confirmedLunchNm: r.confirmed_lunch_nm,
-    confirmedLunchId: r.confirmed_lunch_id, regDt: r.reg_dt, modDt: r.mod_dt
+    confirmedLunchId: r.confirmed_lunch_id, regDt: r.reg_dt, modDt: r.mod_dt,
+    commentCount: parseInt(r.comment_count || 0, 10)
   };
 }
 
@@ -32,13 +33,18 @@ module.exports = async (req, res) => {
     }
     if (id) {
       await pool.query('UPDATE tb_post SET view_cnt=view_cnt+1 WHERE post_id=$1', [id]);
-      const { rows } = await pool.query('SELECT * FROM tb_post WHERE post_id=$1', [id]);
+      const { rows } = await pool.query(
+        `SELECT p.*, (SELECT COUNT(*) FROM tb_comment c WHERE c.post_id=p.post_id) AS comment_count
+         FROM tb_post p WHERE p.post_id=$1`, [id]
+      );
       if (!rows[0]) return res.status(404).end();
       return res.json(toPost(rows[0]));
     }
     const q = type
-      ? 'SELECT * FROM tb_post WHERE post_type=$1 ORDER BY reg_dt DESC'
-      : 'SELECT * FROM tb_post ORDER BY reg_dt DESC';
+      ? `SELECT p.*, (SELECT COUNT(*) FROM tb_comment c WHERE c.post_id=p.post_id) AS comment_count
+         FROM tb_post p WHERE p.post_type=$1 ORDER BY p.reg_dt DESC`
+      : `SELECT p.*, (SELECT COUNT(*) FROM tb_comment c WHERE c.post_id=p.post_id) AS comment_count
+         FROM tb_post p ORDER BY p.reg_dt DESC`;
     const { rows } = await pool.query(q, type ? [type] : []);
     return res.json(rows.map(toPost));
   }

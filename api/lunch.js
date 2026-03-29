@@ -17,18 +17,25 @@ module.exports = async (req, res) => {
   if (resource === 'menus') {
     if (req.method === 'GET') {
       const { rows } = await pool.query('SELECT * FROM tb_lunch_menu ORDER BY menu_id');
-      return res.json(rows.map(r => ({ menuId: r.menu_id, menuNm: r.menu_nm, menuAddr: r.menu_addr, regDt: r.reg_dt })));
+      return res.json(rows.map(r => ({
+        menuId: r.menu_id, menuNm: r.menu_nm,
+        menuLink: r.menu_addr || r.menu_link || null,  // 양쪽 컬럼 지원
+        menuAddr: r.menu_addr || r.menu_link || null,
+        useYn: 'Y',  // 삭제된 레코드는 DB에서 제거되므로 항상 Y
+        regDt: r.reg_dt
+      })));
     }
     if (req.method === 'POST') {
       if (!u || u.userRole !== 'ADMIN') return res.status(403).end();
-      const { menuNm, menuAddr } = req.body || {};
+      const { menuNm, menuAddr, menuLink } = req.body || {};
+      const addr = menuAddr || menuLink || null;
       if (!menuNm) return res.status(400).json({ error: '식당명을 입력하세요.' });
       const { rows } = await pool.query(
         'INSERT INTO tb_lunch_menu(menu_nm,menu_addr) VALUES($1,$2) RETURNING *',
-        [menuNm, menuAddr || null]
+        [menuNm, addr]
       );
       const r = rows[0];
-      return res.status(201).json({ menuId: r.menu_id, menuNm: r.menu_nm, menuAddr: r.menu_addr, regDt: r.reg_dt });
+      return res.status(201).json({ menuId: r.menu_id, menuNm: r.menu_nm, menuLink: r.menu_addr, menuAddr: r.menu_addr, useYn: 'Y', regDt: r.reg_dt });
     }
     if (req.method === 'DELETE') {
       if (!u || u.userRole !== 'ADMIN') return res.status(403).end();
@@ -36,6 +43,18 @@ module.exports = async (req, res) => {
       await pool.query('DELETE FROM tb_lunch_menu_item WHERE menu_id=$1', [menuId]);
       await pool.query('DELETE FROM tb_lunch_menu WHERE menu_id=$1', [menuId]);
       return res.status(204).end();
+    }
+    if (req.method === 'PUT') {
+      if (!u || u.userRole !== 'ADMIN') return res.status(403).end();
+      if (!menuId) return res.status(400).json({ error: 'menuId 필요' });
+      const { menuNm, menuAddr, menuLink } = req.body || {};
+      const addr = menuAddr || menuLink || null;
+      const { rows } = await pool.query(
+        'UPDATE tb_lunch_menu SET menu_nm=$1, menu_addr=$2 WHERE menu_id=$3 RETURNING *',
+        [menuNm, addr, menuId]
+      );
+      const r = rows[0];
+      return res.json({ menuId: r.menu_id, menuNm: r.menu_nm, menuLink: r.menu_addr, menuAddr: r.menu_addr, useYn: 'Y', regDt: r.reg_dt });
     }
     return res.status(405).end();
   }
