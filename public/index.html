@@ -192,7 +192,8 @@
     .table tbody td { padding: .75rem 1rem; vertical-align: middle; color: #D4E0F5; font-weight: 500; }
     .table tbody td strong { color: #E8EDF5; font-weight: 700; }
     .row-me td { background: rgba(0,89,214,.1) !important; }
-    .table-responsive { border-radius: .75rem; overflow: hidden; border: 1px solid var(--border); }
+    .table-responsive { border-radius: .75rem; overflow-x: auto; border: 1px solid var(--border); -webkit-overflow-scrolling: touch; }
+    .table-responsive table { min-width: 480px; }
     .badge.bg-warning-subtle { background: rgba(234,179,8,.15) !important; color: #fbbf24 !important; }
     .badge.bg-primary-subtle { background: rgba(0,89,214,.15) !important; color: #60a5fa !important; }
 
@@ -1013,7 +1014,7 @@ function afterLogin(user) {
   document.getElementById('sidebarName').textContent   = user.userNm;
   document.getElementById('sidebarRole').textContent   = user.userRole === 'ADMIN' ? '운영자' : '일반 멤버';
   document.getElementById('sidebarAvatar').textContent = user.userNm[0];
-  document.getElementById('topbarUser').textContent    = user.userId;
+  document.getElementById('topbarUser').textContent    = user.userNm;
 
   // 히어로
   document.getElementById('heroName').textContent = user.userNm;
@@ -2159,10 +2160,12 @@ async function deleteMember(userId, userNm) {
     H = canvas.height = window.innerHeight;
     particles = [];
     for (let i = 0; i < COUNT; i++) {
+      const vx = (Math.random() - 0.5) * 0.6;
+      const vy = (Math.random() - 0.5) * 0.6;
+      const baseSpeed = Math.sqrt(vx*vx + vy*vy) || 0.3;
       particles.push({
         x: Math.random() * W, y: Math.random() * H,
-        vx: (Math.random() - 0.5) * 0.6,
-        vy: (Math.random() - 0.5) * 0.6,
+        vx, vy, baseSpeed,
         r: Math.random() * 2 + 2
       });
     }
@@ -2188,10 +2191,17 @@ async function deleteMember(userId, userNm) {
     ctx.fillStyle = '#06080F';
     ctx.fillRect(0, 0, W, H);
 
-    /* 파티클 이동 + 속도 감쇠 */
+    /* 파티클 이동 + 속도 감쇠 + 최소 속도 유지 */
     for (const p of particles) {
       p.vx *= 0.96;
       p.vy *= 0.96;
+      /* 클릭 후 감쇠돼도 기본 속도 아래로 안 떨어지게 */
+      const speed = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+      if (speed < p.baseSpeed) {
+        const scale = p.baseSpeed / (speed || 0.001);
+        p.vx *= scale;
+        p.vy *= scale;
+      }
       p.x += p.vx; p.y += p.vy;
       if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
       if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
