@@ -87,7 +87,7 @@ INSERT INTO tb_user (user_id, user_nm, user_pwd, user_role)
 VALUES (
   'EMP001',
   '관리자',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  '$2a$10$6DYqIiIjdt73kNwrIq3x9O9yzvgytu2.J9z47D9fKVrhoUYpFLhGK',
   'ADMIN'
 )
 ON CONFLICT (user_id) DO NOTHING;
