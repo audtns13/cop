@@ -175,18 +175,19 @@
     .table { color:var(--text-primary); background:transparent; }
     .table > :not(caption) > * > * { background:transparent; border-color:var(--border); }
     .table-dark-header th {
-      background: rgba(0,89,214,.12);
-      color: var(--text-secondary);
+      background: rgba(0,89,214,.18);
+      color: #A8C4F0;
       font-size: .75rem;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: .05em;
       text-transform: uppercase;
-      border-bottom: 1px solid rgba(0,89,214,.25) !important;
+      border-bottom: 1px solid rgba(0,89,214,.3) !important;
       padding: .7rem 1rem;
     }
     .table tbody tr { transition: background .15s; }
-    .table tbody tr:hover td { background: rgba(255,255,255,.04) !important; }
-    .table tbody td { padding: .75rem 1rem; vertical-align: middle; }
+    .table tbody tr:hover td { background: rgba(255,255,255,.05) !important; }
+    .table tbody td { padding: .75rem 1rem; vertical-align: middle; color: #D4E0F5; font-weight: 500; }
+    .table tbody td strong { color: #E8EDF5; font-weight: 700; }
     .row-me td { background: rgba(0,89,214,.1) !important; }
     .table-responsive { border-radius: .75rem; overflow: hidden; border: 1px solid var(--border); }
     .badge.bg-warning-subtle { background: rgba(234,179,8,.15) !important; color: #fbbf24 !important; }
