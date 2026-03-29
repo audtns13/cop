@@ -1610,10 +1610,10 @@ async function loadLunchVotes(meetingPostId) {
         const isMe = currentUser && v.userId === currentUser.userId;
         const choice = v.notEatingYn === 'Y' ? '🚫 안먹음' : escHtml(v.menuNm || '-');
         html += `
-          <div class="d-flex align-items-center gap-2 py-1 px-2 rounded ${isMe ? 'bg-primary-subtle' : 'bg-light'}" style="font-size:.85rem;">
-            <span class="fw-semibold" style="min-width:70px;">${escHtml(v.userNm || v.userId)}</span>
-            <span class="text-muted" style="font-size:.7rem;">→</span>
-            <span>${choice}</span>
+          <div class="d-flex align-items-center gap-2 py-1 px-2 rounded" style="font-size:.85rem;background:${isMe ? 'rgba(0,89,214,.22)' : 'rgba(255,255,255,.06)'};border:1px solid ${isMe ? 'rgba(0,89,214,.35)' : 'rgba(255,255,255,.08)'};">
+            <span class="fw-semibold" style="min-width:70px;color:#E8EDF5;">${escHtml(v.userNm || v.userId)}</span>
+            <span style="font-size:.7rem;color:#7A8EAD;">→</span>
+            <span style="color:#D4E0F5;">${choice}</span>
             ${isMe ? '<span class="badge bg-primary ms-auto" style="font-size:.65rem;">나</span>' : ''}
           </div>`;
       });
