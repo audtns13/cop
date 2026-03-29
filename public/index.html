@@ -87,11 +87,13 @@
     .dday-label { font-size:.72rem; opacity:.85; margin-top:.2rem; font-weight:500; }
     .dday-action { margin-top:.6rem; }
     @media (max-width:767px) {
-      .dday-box { width:100%; min-width:unset; padding:.7rem 1rem; display:flex; align-items:center; gap:.75rem; text-align:left; border-radius:.9rem; }
+      .dday-box { width:100%; min-width:unset; padding:.7rem 1rem; display:flex; align-items:center; gap:.75rem; text-align:left; border-radius:.9rem; flex-wrap:nowrap; }
       .dday-box .dday-title-label { display:none; }
-      .dday-box .dday-num { font-size:2rem; margin:0; }
+      .dday-text { display:flex; flex-direction:column; min-width:0; }
+      .dday-box .dday-num { font-size:1.7rem; margin:0; line-height:1; white-space:nowrap; }
+      .dday-box .dday-label { font-size:.68rem; margin-top:.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .dday-box .dday-action { margin-top:0; margin-left:auto; flex-shrink:0; }
-      .dday-box .dday-action .btn { padding:.35rem .8rem; font-size:.78rem; }
+      .dday-box .dday-action .btn { padding:.28rem .55rem; font-size:.72rem; white-space:nowrap; }
     }
 
     .shortcut-btn { background:var(--bg-card); border:1px solid var(--border); border-radius:.9rem; padding:1rem .75rem; text-align:center; cursor:pointer; transition:all .2s; text-decoration:none; color:var(--text-secondary); display:block; }
@@ -452,8 +454,10 @@
               <div class="dday-title-label dday-label" style="color:rgba(255,255,255,.8);font-size:.76rem;text-transform:uppercase;letter-spacing:.06em;">
                 <i class="bi bi-calendar-event me-1"></i>다음 정기 모임
               </div>
-              <div class="dday-num" id="heroDday">-</div>
-              <div class="dday-label" style="color:rgba(255,255,255,.7);" id="heroDdayDate">-</div>
+              <div class="dday-text">
+                <div class="dday-num" id="heroDday">-</div>
+                <div class="dday-label" style="color:rgba(255,255,255,.7);" id="heroDdayDate">-</div>
+              </div>
               <div class="dday-action">
                 <button class="btn btn-light btn-sm fw-bold px-3" style="border-radius:.65rem;font-size:.78rem;"
                   onclick="showPage('attendance', document.querySelectorAll('#sidebar .nav-link')[1])">
@@ -844,45 +848,46 @@
     </div><!-- /page-content -->
   </div><!-- /mainContent -->
 
-  <!-- ── AI 도우미 플로팅 버튼 ── -->
-  <button class="ai-fab" title="AI 도우미" onclick="openAiAgent()">
-    <i class="bi bi-headset"></i>
-  </button>
 
-  <!-- AI 도우미 비밀번호 모달 -->
-  <div class="modal fade" id="aiAgentModal" tabindex="-1" aria-labelledby="aiAgentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-      <div class="modal-content" style="border-radius:1rem; overflow:hidden;">
-        <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#4f46e5,#7c3aed); padding:1.25rem 1.5rem 0.75rem;">
-          <div class="d-flex align-items-center gap-2 text-white">
-            <i class="bi bi-headset fs-4"></i>
-            <div>
-              <div class="fw-bold" style="font-size:.95rem;">AI 도우미</div>
-              <div style="font-size:.75rem; opacity:.85;">비밀번호를 입력하세요</div>
-            </div>
+</div><!-- /appSection -->
+
+<!-- ── AI 도우미 플로팅 버튼 ── -->
+<button class="ai-fab" id="aiFab" title="AI 도우미" onclick="openAiAgent()" style="display:none;">
+  <i class="bi bi-headset"></i>
+</button>
+
+<!-- AI 도우미 비밀번호 모달 -->
+<div class="modal fade" id="aiAgentModal" tabindex="-1" aria-labelledby="aiAgentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="border-radius:1rem; overflow:hidden;">
+      <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#4f46e5,#7c3aed); padding:1.25rem 1.5rem 0.75rem;">
+        <div class="d-flex align-items-center gap-2 text-white">
+          <i class="bi bi-headset fs-4"></i>
+          <div>
+            <div class="fw-bold" style="font-size:.95rem;">AI 도우미</div>
+            <div style="font-size:.75rem; opacity:.85;">비밀번호를 입력하세요</div>
           </div>
-          <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body px-4 pt-3 pb-4">
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-lock-fill text-primary"></i></span>
-            <input type="password" id="aiAgentPwInput" class="form-control"
-              placeholder="비밀번호 입력"
-              onkeydown="if(event.key==='Enter') confirmAiAgent()" />
-          </div>
-          <div id="aiAgentPwError" class="text-danger small mt-2 d-none">
-            <i class="bi bi-exclamation-circle me-1"></i>비밀번호가 올바르지 않습니다.
-          </div>
-          <button class="btn btn-primary w-100 mt-3" onclick="confirmAiAgent()"
-            style="background:linear-gradient(135deg,#4f46e5,#7c3aed); border:none; border-radius:.6rem;">
-            <i class="bi bi-box-arrow-up-right me-1"></i>AI 도우미 열기
-          </button>
+        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 pt-3 pb-4">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-lock-fill text-primary"></i></span>
+          <input type="password" id="aiAgentPwInput" class="form-control"
+            placeholder="비밀번호 입력"
+            onkeydown="if(event.key==='Enter') confirmAiAgent()" />
         </div>
+        <div id="aiAgentPwError" class="text-danger small mt-2 d-none">
+          <i class="bi bi-exclamation-circle me-1"></i>비밀번호가 올바르지 않습니다.
+        </div>
+        <button class="btn btn-primary w-100 mt-3" onclick="confirmAiAgent()"
+          style="background:linear-gradient(135deg,#4f46e5,#7c3aed); border:none; border-radius:.6rem;">
+          <i class="bi bi-box-arrow-up-right me-1"></i>AI 도우미 열기
+        </button>
       </div>
     </div>
   </div>
-
-</div><!-- /appSection -->
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -910,25 +915,21 @@ function loginLogoFallback() {
 
 const AI_AGENT_URL = 'https://udify.app/workflow/jOyUg4TYexuat45L';
 const AI_AGENT_PW  = '6292';
-let   _aiModal     = null;
 
 function openAiAgent() {
-  const el = document.getElementById('aiAgentModal');
-  if (!_aiModal) _aiModal = new bootstrap.Modal(el);
   document.getElementById('aiAgentPwInput').value = '';
   document.getElementById('aiAgentPwError').classList.add('d-none');
-  _aiModal.show();
-  setTimeout(() => document.getElementById('aiAgentPwInput').focus(), 300);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('aiAgentModal')).show();
+  setTimeout(() => document.getElementById('aiAgentPwInput').focus(), 350);
 }
 
 function confirmAiAgent() {
   const pw  = document.getElementById('aiAgentPwInput').value;
-  const err = document.getElementById('aiAgentPwError');
   if (pw === AI_AGENT_PW) {
-    _aiModal.hide();
+    bootstrap.Modal.getInstance(document.getElementById('aiAgentModal')).hide();
     window.open(AI_AGENT_URL, '_blank', 'noopener,noreferrer');
   } else {
-    err.classList.remove('d-none');
+    document.getElementById('aiAgentPwError').classList.remove('d-none');
     document.getElementById('aiAgentPwInput').select();
   }
 }
@@ -1024,6 +1025,7 @@ async function doLogout() {
   currentUser = null;
   document.getElementById('appSection').style.display   = 'none';
   document.getElementById('loginSection').style.display = 'flex';
+  document.getElementById('aiFab').style.display = 'none';
 }
 
 // ── 로그인 후 처리
@@ -1031,6 +1033,7 @@ function afterLogin(user) {
   currentUser = user;
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('appSection').style.display   = 'block';
+  document.getElementById('aiFab').style.display = 'flex';
 
   // 사이드바 / 탑바
   document.getElementById('sidebarName').textContent   = user.userNm;
