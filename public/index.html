@@ -1831,29 +1831,43 @@ async function loadArchive() {
   else btn.style.display = 'none';
 
   try {
-    const posts = await api('/api/posts?type=ACTIVITY');
+    const [posts, summary] = await Promise.all([
+      api('/api/posts?type=ACTIVITY'),
+      api('/api/attendance?action=summary').catch(() => ({ totalUsers: 0, attendMap: {} }))
+    ]);
     allActivityPosts = posts || [];
-    renderArchiveList(allActivityPosts);
+    renderArchiveList(allActivityPosts, summary || { totalUsers: 0, attendMap: {} });
   } catch(e) {}
 }
 
-function renderArchiveList(posts) {
+function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
   const el = document.getElementById('archiveList');
   if (!posts || posts.length === 0) {
     el.innerHTML = '<div class="cop-card text-center text-muted py-5">등록된 활동 기록이 없습니다</div>';
     return;
   }
   const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
-  el.innerHTML = '<div class="cop-card">' + posts.map((p, i) => `
+  const { totalUsers, attendMap } = summary;
+  el.innerHTML = '<div class="cop-card">' + posts.map((p, i) => {
+    const attendCount = attendMap[p.postId] || 0;
+    const pct = totalUsers > 0 ? Math.round(attendCount / totalUsers * 100) : 0;
+    const barColor = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#64748b';
+    return `
     <div class="border rounded-3 p-3 mb-3">
       <div class="d-flex align-items-start justify-content-between">
         <div style="flex:1;">
-          <div class="d-flex align-items-center gap-2 mb-1">
+          <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
             <span class="badge ${i===0?'bg-primary':'bg-secondary'}">${posts.length-i}회차</span>
             <span class="text-muted small">${p.meetingDt ? fmtDt(p.meetingDt) : fmtDt(p.regDt)}</span>
+            <span style="font-size:.78rem;color:#94a3b8;margin-left:auto;">
+              <i class="bi bi-people-fill me-1" style="color:${barColor};"></i>
+              <span style="color:${barColor};font-weight:600;">${attendCount}</span>
+              <span style="color:#64748b;">/ ${totalUsers}명</span>
+              <span style="color:#475569;font-size:.7rem;"> (${pct}%)</span>
+            </span>
           </div>
           <h6 class="fw-bold mb-1">${escHtml(p.title)}</h6>
-          <p class="text-muted small mb-2" style="white-space:pre-wrap;">${escHtml((p.content||'').substring(0,100))}${(p.content||'').length>100?'...':''}</p>
+          <p class="text-muted small mb-0" style="white-space:pre-wrap;">${escHtml((p.content||'').substring(0,100))}${(p.content||'').length>100?'...':''}</p>
         </div>
         ${isAdmin ? `
         <div class="d-flex gap-1 flex-column flex-sm-row ms-2">
@@ -1861,7 +1875,8 @@ function renderArchiveList(posts) {
           <button class="btn btn-outline-danger btn-sm" onclick="deleteArchive(${p.postId})"><i class="bi bi-trash"></i></button>
         </div>` : ''}
       </div>
-    </div>`).join('') + '</div>';
+    </div>`;
+  }).join('') + '</div>';
 }
 
 function showArchiveForm(post) {
