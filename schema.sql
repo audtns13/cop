@@ -78,3 +78,16 @@ CREATE TABLE IF NOT EXISTS tb_file_info (
   file_size BIGINT,
   reg_dt    TIMESTAMP    NOT NULL DEFAULT NOW()
 );
+
+-- ============================================================
+-- 초기 관리자 계정 (EMP001 / 1234)
+-- bcrypt hash of "1234"
+-- ============================================================
+INSERT INTO tb_user (user_id, user_nm, user_pwd, user_role)
+VALUES (
+  'EMP001',
+  '관리자',
+  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  'ADMIN'
+)
+ON CONFLICT (user_id) DO NOTHING;
