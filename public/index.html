@@ -2144,30 +2144,19 @@ async function deleteMember(userId, userNm) {
   const canvas = document.getElementById('globeCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+  const COUNT = 100, MAX_DIST = 180, MOUSE_DIST = 220;
   let W, H, particles = [], mouse = { x: -9999, y: -9999 };
-  const COUNT    = 100;
-  const MAX_DIST = 180;
-  const MOUSE_DIST = 220;
 
-  function resize() {
-    W = canvas.width  = canvas.offsetWidth  || window.innerWidth;
-    H = canvas.height = canvas.offsetHeight || window.innerHeight;
-    if (W === 0 || H === 0) {
-      W = canvas.width  = window.innerWidth;
-      H = canvas.height = window.innerHeight;
-    }
-    initParticles();
-  }
-
-  function initParticles() {
+  function init() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
     particles = [];
     for (let i = 0; i < COUNT; i++) {
       particles.push({
-        x  : Math.random() * W,
-        y  : Math.random() * H,
-        vx : (Math.random() - 0.5) * 0.6,
-        vy : (Math.random() - 0.5) * 0.6,
-        r  : Math.random() * 2 + 1.5
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: (Math.random() - 0.5) * 0.6,
+        r: Math.random() * 2 + 2
       });
     }
   }
@@ -2175,42 +2164,36 @@ async function deleteMember(userId, userNm) {
   function draw() {
     ctx.clearRect(0, 0, W, H);
 
-    /* 위치 업데이트 */
     for (const p of particles) {
-      p.x += p.vx;
-      p.y += p.vy;
-      if (p.x < 0) p.x = W;
-      if (p.x > W) p.x = 0;
-      if (p.y < 0) p.y = H;
-      if (p.y > H) p.y = 0;
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
     }
 
-    /* 파티클 간 연결선 */
+    /* 연결선 */
     for (let i = 0; i < particles.length; i++) {
       const a = particles[i];
       for (let j = i + 1; j < particles.length; j++) {
-        const b    = particles[j];
-        const dx   = a.x - b.x, dy = a.y - b.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < MAX_DIST) {
-          const alpha = (1 - dist / MAX_DIST) * 0.65;
+        const b = particles[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < MAX_DIST) {
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);
-          ctx.strokeStyle = `rgba(60,140,255,${alpha})`;
-          ctx.lineWidth = 0.9;
+          ctx.strokeStyle = `rgba(60,140,255,${(1 - d/MAX_DIST) * 0.7})`;
+          ctx.lineWidth = 1;
           ctx.stroke();
         }
       }
-      /* 마우스 연결선 */
-      const mdx   = a.x - mouse.x, mdy = a.y - mouse.y;
-      const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
-      if (mdist < MOUSE_DIST) {
-        const alpha = (1 - mdist / MOUSE_DIST) * 0.85;
+      /* 마우스 연결 */
+      const mdx = a.x - mouse.x, mdy = a.y - mouse.y;
+      const md = Math.sqrt(mdx*mdx + mdy*mdy);
+      if (md < MOUSE_DIST) {
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(mouse.x, mouse.y);
-        ctx.strokeStyle = `rgba(100,180,255,${alpha})`;
+        ctx.strokeStyle = `rgba(120,190,255,${(1 - md/MOUSE_DIST) * 0.85})`;
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -2218,52 +2201,28 @@ async function deleteMember(userId, userNm) {
 
     /* 파티클 점 */
     for (const p of particles) {
-      const mdx   = p.x - mouse.x, mdy = p.y - mouse.y;
-      const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
-      const glow  = mdist < MOUSE_DIST ? (1 - mdist / MOUSE_DIST) : 0;
-      const radius = p.r + glow * 2;
-
-      /* 외곽 글로우 */
-      if (glow > 0) {
-        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius * 3);
-        grad.addColorStop(0, `rgba(100,180,255,${glow * 0.4})`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, radius * 3, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.fill();
-      }
-
+      const mdx = p.x - mouse.x, mdy = p.y - mouse.y;
+      const md = Math.sqrt(mdx*mdx + mdy*mdy);
+      const glow = md < MOUSE_DIST ? (1 - md/MOUSE_DIST) : 0;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${100 + Math.round(glow*80)},${160 + Math.round(glow*50)},255,${0.75 + glow * 0.25})`;
+      ctx.arc(p.x, p.y, p.r + glow * 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${100 + Math.round(glow*80)},${165 + Math.round(glow*45)},255,${0.8 + glow * 0.2})`;
       ctx.fill();
     }
 
     requestAnimationFrame(draw);
   }
 
-  /* pointer-events:none 이므로 window에서 마우스 좌표 추적 */
   window.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect();
     mouse.x = e.clientX - rect.left;
     mouse.y = e.clientY - rect.top;
   });
   document.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+  window.addEventListener('resize', init);
 
-  window.addEventListener('resize', resize);
-
-  /* loginSection이 flex로 보일 때까지 기다렸다가 초기화 */
-  function tryInit() {
-    const section = document.getElementById('loginSection');
-    if (section && section.offsetWidth > 0) {
-      resize();
-      draw();
-    } else {
-      requestAnimationFrame(tryInit);
-    }
-  }
-  tryInit();
+  init();
+  draw();
 })();
 </script>
 </body>
