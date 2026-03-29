@@ -27,7 +27,7 @@
 
     /* 로그인 */
     #loginSection { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg-main); position:relative; overflow:hidden; }
-    #globeCanvas { position:absolute; inset:0; width:100%; height:100%; opacity:.85; pointer-events:auto; }
+    #globeCanvas { position:absolute; inset:0; width:100%; height:100%; opacity:1; pointer-events:none; }
     .login-wrap { position:relative; z-index:10; display:flex; align-items:center; justify-content:center; gap:5rem; width:100%; max-width:960px; padding:2rem; }
     .login-hero { flex:1; max-width:440px; color:#fff; }
     .login-hero-tag { display:inline-flex; align-items:center; gap:.4rem; font-size:.72rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--primary); border:1px solid rgba(0,89,214,.4); border-radius:2rem; padding:.35rem .9rem; margin-bottom:1.5rem; }
@@ -2145,13 +2145,17 @@ async function deleteMember(userId, userNm) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   let W, H, particles = [], mouse = { x: -9999, y: -9999 };
-  const COUNT = 90;
-  const MAX_DIST = 160;
-  const MOUSE_DIST = 200;
+  const COUNT    = 100;
+  const MAX_DIST = 180;
+  const MOUSE_DIST = 220;
 
   function resize() {
-    W = canvas.width  = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+    W = canvas.width  = canvas.offsetWidth  || window.innerWidth;
+    H = canvas.height = canvas.offsetHeight || window.innerHeight;
+    if (W === 0 || H === 0) {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
     initParticles();
   }
 
@@ -2159,11 +2163,11 @@ async function deleteMember(userId, userNm) {
     particles = [];
     for (let i = 0; i < COUNT; i++) {
       particles.push({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        r: Math.random() * 1.5 + 1
+        x  : Math.random() * W,
+        y  : Math.random() * H,
+        vx : (Math.random() - 0.5) * 0.6,
+        vy : (Math.random() - 0.5) * 0.6,
+        r  : Math.random() * 2 + 1.5
       });
     }
   }
@@ -2171,7 +2175,7 @@ async function deleteMember(userId, userNm) {
   function draw() {
     ctx.clearRect(0, 0, W, H);
 
-    // update positions
+    /* 위치 업데이트 */
     for (const p of particles) {
       p.x += p.vx;
       p.y += p.vy;
@@ -2181,61 +2185,85 @@ async function deleteMember(userId, userNm) {
       if (p.y > H) p.y = 0;
     }
 
-    // draw connections
+    /* 파티클 간 연결선 */
     for (let i = 0; i < particles.length; i++) {
       const a = particles[i];
       for (let j = i + 1; j < particles.length; j++) {
-        const b = particles[j];
-        const dx = a.x - b.x, dy = a.y - b.y;
+        const b    = particles[j];
+        const dx   = a.x - b.x, dy = a.y - b.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < MAX_DIST) {
-          const alpha = (1 - dist / MAX_DIST) * 0.35;
+          const alpha = (1 - dist / MAX_DIST) * 0.65;
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);
-          ctx.strokeStyle = `rgba(0, 120, 255, ${alpha})`;
-          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = `rgba(60,140,255,${alpha})`;
+          ctx.lineWidth = 0.9;
           ctx.stroke();
         }
       }
-      // mouse connections
-      const mdx = a.x - mouse.x, mdy = a.y - mouse.y;
+      /* 마우스 연결선 */
+      const mdx   = a.x - mouse.x, mdy = a.y - mouse.y;
       const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
       if (mdist < MOUSE_DIST) {
-        const alpha = (1 - mdist / MOUSE_DIST) * 0.6;
+        const alpha = (1 - mdist / MOUSE_DIST) * 0.85;
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(mouse.x, mouse.y);
-        ctx.strokeStyle = `rgba(80, 160, 255, ${alpha})`;
-        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = `rgba(100,180,255,${alpha})`;
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
     }
 
-    // draw dots
+    /* 파티클 점 */
     for (const p of particles) {
-      const mdx = p.x - mouse.x, mdy = p.y - mouse.y;
+      const mdx   = p.x - mouse.x, mdy = p.y - mouse.y;
       const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
-      const glow = mdist < MOUSE_DIST ? (1 - mdist / MOUSE_DIST) : 0;
+      const glow  = mdist < MOUSE_DIST ? (1 - mdist / MOUSE_DIST) : 0;
+      const radius = p.r + glow * 2;
+
+      /* 외곽 글로우 */
+      if (glow > 0) {
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius * 3);
+        grad.addColorStop(0, `rgba(100,180,255,${glow * 0.4})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius * 3, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r + glow * 1.5, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${80 + Math.round(glow * 100)}, ${140 + Math.round(glow * 60)}, 255, ${0.55 + glow * 0.4})`;
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${100 + Math.round(glow*80)},${160 + Math.round(glow*50)},255,${0.75 + glow * 0.25})`;
       ctx.fill();
     }
 
     requestAnimationFrame(draw);
   }
 
-  canvas.addEventListener('mousemove', e => {
+  /* pointer-events:none 이므로 window에서 마우스 좌표 추적 */
+  window.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect();
     mouse.x = e.clientX - rect.left;
     mouse.y = e.clientY - rect.top;
   });
-  canvas.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+  document.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
 
   window.addEventListener('resize', resize);
-  resize();
-  draw();
+
+  /* loginSection이 flex로 보일 때까지 기다렸다가 초기화 */
+  function tryInit() {
+    const section = document.getElementById('loginSection');
+    if (section && section.offsetWidth > 0) {
+      resize();
+      draw();
+    } else {
+      requestAnimationFrame(tryInit);
+    }
+  }
+  tryInit();
 })();
 </script>
 </body>
