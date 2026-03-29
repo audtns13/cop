@@ -77,9 +77,8 @@
     .cop-card { background:var(--bg-card); border:1px solid var(--border); border-radius:1rem; box-shadow:0 4px 24px rgba(0,0,0,.3); padding:1.4rem; height:100%; }
     .cop-card-title { font-size:.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.6rem; }
 
-    .hero-banner { background:linear-gradient(135deg,#003087 0%,#0059D6 60%,#1A7AFF 100%); border-radius:1.25rem; padding:2rem 2rem 1.5rem; color:#fff; position:relative; overflow:hidden; margin-bottom:1.5rem; border:1px solid rgba(0,89,214,.3); }
-    .hero-banner::before { content:""; position:absolute; top:-50px; right:-50px; width:220px; height:220px; background:rgba(255,255,255,.06); border-radius:50%; }
-    .hero-banner::after { content:""; position:absolute; bottom:-70px; right:70px; width:160px; height:160px; background:rgba(255,255,255,.04); border-radius:50%; }
+    .hero-banner { background:linear-gradient(135deg,#002070 0%,#0047B3 45%,#0070FF 100%); border-radius:1.25rem; padding:2rem 2rem 1.5rem; color:#fff; position:relative; overflow:hidden; margin-bottom:1.5rem; border:1px solid rgba(80,140,255,.35); box-shadow:0 8px 40px rgba(0,60,180,.45); }
+    #heroCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
     .hero-greeting { font-size:1.4rem; font-weight:700; }
     .hero-sub { font-size:.88rem; opacity:.75; }
     .dday-box { background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.25); border-radius:1rem; padding:.8rem 1.2rem; text-align:center; min-width:120px; backdrop-filter:blur(6px); position:relative; z-index:1; }
@@ -409,6 +408,7 @@
 
         <!-- 히어로 배너 -->
         <div class="hero-banner">
+          <canvas id="heroCanvas"></canvas>
           <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
             <div style="position:relative;z-index:1;">
               <div class="hero-greeting mb-1">
@@ -2145,6 +2145,74 @@ async function deleteMember(userId, userNm) {
 </script>
 
 <script>
+/* ── Hero Banner Mini Particle ────────────────────────────────── */
+(function() {
+  function startHero() {
+    const canvas = document.getElementById('heroCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const COUNT = 38, DIST = 120;
+    let W, H, pts = [];
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      W = canvas.width  = rect.width  || canvas.parentElement.offsetWidth;
+      H = canvas.height = rect.height || canvas.parentElement.offsetHeight;
+      if (W < 10 || H < 10) { requestAnimationFrame(resize); return; }
+      pts = [];
+      for (let i = 0; i < COUNT; i++) {
+        const vx = (Math.random() - 0.5) * 0.55;
+        const vy = (Math.random() - 0.5) * 0.55;
+        const base = Math.sqrt(vx*vx + vy*vy) || 0.25;
+        pts.push({ x: Math.random()*W, y: Math.random()*H, vx, vy, base, r: Math.random()*1.8+1 });
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of pts) {
+        p.vx *= 0.97; p.vy *= 0.97;
+        const sp = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+        if (sp < p.base) { const sc = p.base/(sp||.001); p.vx*=sc; p.vy*=sc; }
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      }
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i+1; j < pts.length; j++) {
+          const dx = pts[i].x-pts[j].x, dy = pts[i].y-pts[j].y;
+          const d = Math.sqrt(dx*dx+dy*dy);
+          if (d < DIST) {
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[j].x, pts[j].y);
+            ctx.strokeStyle = `rgba(255,255,255,${(1-d/DIST)*0.3})`;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          }
+        }
+        ctx.beginPath();
+        ctx.arc(pts[i].x, pts[i].y, pts[i].r, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(255,255,255,0.55)`;
+        ctx.fill();
+      }
+      requestAnimationFrame(draw);
+    }
+
+    const ro = new ResizeObserver(() => resize());
+    ro.observe(canvas.parentElement);
+    resize();
+    draw();
+  }
+
+  /* 대시보드 로드 후 실행 */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startHero);
+  } else {
+    startHero();
+  }
+})();
+
 /* ── Particle Network Animation ───────────────────────────────── */
 (function() {
   const canvas = document.getElementById('globeCanvas');
