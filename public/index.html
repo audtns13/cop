@@ -23,7 +23,8 @@
       --text-muted:    #4A5D7A;
     }
     * { box-sizing: border-box; }
-    body { background: var(--bg-main); font-family: "Segoe UI","Apple SD Gothic Neo",sans-serif; color: var(--text-primary); }
+    body { background: transparent; font-family: "Segoe UI","Apple SD Gothic Neo",sans-serif; color: var(--text-primary); }
+    html { background: var(--bg-main); }
     /* 파티클이 뒤에 있고 컨텐츠가 위에 오도록 */
     #loginSection, #appSection { position:relative; z-index:1; }
 
@@ -2166,7 +2167,9 @@ async function deleteMember(userId, userNm) {
   }
 
   function draw() {
-    ctx.clearRect(0, 0, W, H);
+    /* 어두운 배경을 canvas 자체에서 그려서 body 배경 불필요 */
+    ctx.fillStyle = '#06080F';
+    ctx.fillRect(0, 0, W, H);
 
     for (const p of particles) {
       p.x += p.vx; p.y += p.vy;
