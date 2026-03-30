@@ -1039,8 +1039,9 @@ function escHtml(s) {
 
 // ── 인증 탭 전환
 function switchAuth(tab) {
-  document.querySelectorAll('#authTab .nav-link').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
+  document.querySelectorAll('#authTab .nav-link').forEach((t, i) => {
+    t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+  });
   document.getElementById('loginTab').style.display    = tab === 'login'    ? '' : 'none';
   document.getElementById('registerTab').style.display = tab === 'register' ? '' : 'none';
 }
@@ -1937,7 +1938,7 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
     const barColor = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#64748b';
     const seq = total - i; // 최신=total회차
     const PREVIEW = 120;
-    const content = (p.content || '').replace(/^[\s\t　]+/gm, m => m.replace(/\t|　/g, '').trimStart()); // 들여쓰기 제거
+    const content = (p.content || '').replace(/^[ \t]+/gm, '');
     const isLong = content.length > PREVIEW;
     const preview = escHtml(content.substring(0, PREVIEW));
     const full = escHtml(content);
@@ -1961,7 +1962,7 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
             ${isLong ? `<span class="archive-full-${p.postId}" style="display:none;">${full}</span>` : ''}
           </div>
           ${isLong ? `
-          <button class="btn btn-link btn-sm p-0 mt-1" style="font-size:.78rem;color:#0059D6;"
+          <button class="btn btn-link btn-sm p-0 mt-0" style="font-size:.78rem;color:#0059D6;"
             onclick="toggleArchiveContent(${p.postId}, this)">
             <i class="bi bi-chevron-down me-1"></i>더보기
           </button>` : ''}
@@ -2113,7 +2114,7 @@ async function openPost(postId) {
       fileListEl.innerHTML = files.map(f => `
         <div class="d-flex align-items-center gap-2 mb-1">
           <i class="bi bi-file-earmark text-primary"></i>
-          <a href="/api/files/download/${f.fileId}" class="small text-decoration-none">${escHtml(f.orgNm)}</a>
+          <a href="#" class="small text-decoration-none" onclick="downloadFile(${f.fileId},${JSON.stringify(f.origNm||f.orgNm)});return false;">${escHtml(f.origNm||f.orgNm)}</a>
           <span class="text-muted" style="font-size:.75rem;">(${(f.fileSize/1024).toFixed(1)}KB)</span>
           ${isOwner2 ? `<button class="btn btn-link btn-sm p-0 text-danger" style="font-size:.75rem;" onclick="deleteFile(${f.fileId})">삭제</button>` : ''}
         </div>`).join('');
@@ -2195,11 +2196,27 @@ async function submitPost() {
 
 async function uploadFiles(postId, files) {
   for (const file of files) {
-    const fd = new FormData();
-    fd.append('postId', postId);
-    fd.append('file', file);
-    await fetch('/api/files/upload', { method:'POST', body: fd, credentials:'same-origin' });
+    const fileData = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    await api('/api/files', {
+      method: 'POST',
+      body: JSON.stringify({ postId, origNm: file.name, fileSize: file.size, fileData })
+    });
   }
+}
+
+async function downloadFile(fileId, fileName) {
+  try {
+    const res = await api('/api/files?fileId=' + fileId);
+    const a = document.createElement('a');
+    a.href = res.fileData;
+    a.download = res.origNm || fileName || 'download';
+    a.click();
+  } catch(e) { alert('파일 다운로드 실패'); }
 }
 
 async function deleteFile(fileId) {
