@@ -277,6 +277,8 @@
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-person"></i></span>
             <input type="text" id="loginId" class="form-control" placeholder="사번을 입력하세요"
+              autocomplete="off" inputmode="text"
+              oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'')"
               onkeydown="if(event.key==='Enter') doLogin()" />
           </div>
         </div>
@@ -298,23 +300,44 @@
       <div id="registerTab" style="display:none;">
         <div class="mb-3">
           <label class="form-label fw-semibold">사번</label>
-          <input type="text" id="regId" class="form-control" placeholder="사번 입력" />
+          <input type="text" id="regId" class="form-control" placeholder="사번 입력 (영문+숫자)"
+            autocomplete="off" inputmode="text"
+            oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'')" />
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">성명</label>
-          <input type="text" id="regName" class="form-control" placeholder="이름 입력" />
+          <input type="text" id="regName" class="form-control" placeholder="이름 입력"
+            autocomplete="off" />
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">비밀번호</label>
-          <input type="password" id="regPw" class="form-control" placeholder="비밀번호 설정" />
+          <input type="password" id="regPw" class="form-control" placeholder="비밀번호 설정"
+            autocomplete="new-password" />
         </div>
-        <div class="mb-4">
+        <div class="mb-3">
           <label class="form-label fw-semibold">비밀번호 확인</label>
-          <input type="password" id="regPw2" class="form-control" placeholder="비밀번호 재입력" />
+          <input type="password" id="regPw2" class="form-control" placeholder="비밀번호 재입력"
+            autocomplete="new-password" />
+        </div>
+        <!-- 개인정보 동의 -->
+        <div class="mb-3 p-3 rounded" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);font-size:.82rem;">
+          <div class="fw-semibold mb-2" style="color:#E8EDF5;">📋 개인정보 수집·이용 동의</div>
+          <div style="color:#7A8EAD;line-height:1.6;max-height:80px;overflow-y:auto;">
+            수집 항목: 사번, 성명<br>
+            수집 목적: CoP 활동 관리 (출결, 점심 투표 등)<br>
+            보유 기간: 탈퇴 시까지<br>
+            동의를 거부할 수 있으나, 거부 시 서비스 이용이 불가합니다.
+          </div>
+          <div class="form-check mt-2">
+            <input type="checkbox" class="form-check-input" id="regAgree" />
+            <label class="form-check-label" for="regAgree" style="color:#E8EDF5;font-size:.82rem;">
+              개인정보 수집·이용에 동의합니다 <span class="text-danger">*</span>
+            </label>
+          </div>
         </div>
         <div id="regError" class="alert alert-danger d-none small py-2"></div>
         <button class="btn btn-primary w-100 py-2 fw-semibold" onclick="doRegister()">
-          <i class="bi bi-person-plus me-1"></i>가입하기
+          <i class="bi bi-person-plus me-1"></i>가입 신청
         </button>
       </div>
     </div>
@@ -619,27 +642,6 @@
           </div>
         </div>
 
-        <!-- 모임별 참석자 상세 -->
-        <div id="attendDetailCard" style="display:none;" class="mt-3">
-          <div class="cop-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <div class="cop-card-title mb-0">
-                <i class="bi bi-person-lines-fill me-1"></i><span id="attendDetailTitle">참석자 현황</span>
-              </div>
-              <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('attendDetailCard').style.display='none'">
-                <i class="bi bi-x"></i> 닫기
-              </button>
-            </div>
-            <div class="table-responsive">
-              <table class="table align-middle mb-0" style="font-size:.87rem;">
-                <thead class="table-dark-header">
-                  <tr><th>이름</th><th>사번</th><th>상태</th><th>투표시간</th></tr>
-                </thead>
-                <tbody id="attendDetailTable"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- ── 점심 메뉴 ── -->
@@ -828,8 +830,15 @@
       <!-- ── 멤버 관리 (관리자) ── -->
       <div id="page-members" style="display:none;">
         <div class="page-header">
-          <h5><i class="bi bi-people me-2 text-primary"></i>멤버 관리</h5>
-          <p>가입된 멤버의 권한 변경 및 삭제를 관리합니다</p>
+          <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+            <div>
+              <h5 class="mb-0"><i class="bi bi-people me-2 text-primary"></i>멤버 관리</h5>
+              <p class="mb-0 mt-1">가입된 멤버의 권한 변경 및 삭제를 관리합니다</p>
+            </div>
+            <button id="btnPendingUsers" class="btn btn-warning btn-sm fw-bold" style="display:none;" onclick="openPendingModal()">
+              <i class="bi bi-person-exclamation me-1"></i>승인 대기 0명
+            </button>
+          </div>
         </div>
         <div class="cop-card">
           <div class="table-responsive">
@@ -884,6 +893,58 @@
           style="background:linear-gradient(135deg,#4f46e5,#7c3aed); border:none; border-radius:.6rem;">
           <i class="bi bi-box-arrow-up-right me-1"></i>AI 도우미 열기
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 참석자 현황 모달 -->
+<div class="modal fade" id="attendDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">
+          <i class="bi bi-person-lines-fill me-1"></i><span id="attendDetailTitle">참석자 현황</span>
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0" style="font-size:.87rem;">
+            <thead class="table-dark-header">
+              <tr><th>이름</th><th>사번</th><th>상태</th><th>투표시간</th></tr>
+            </thead>
+            <tbody id="attendDetailTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 가입 승인 대기 모달 (관리자) -->
+<div class="modal fade" id="pendingUsersModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold"><i class="bi bi-person-check me-1"></i>가입 승인 대기</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0" style="font-size:.87rem;">
+            <thead class="table-dark-header">
+              <tr><th>사번</th><th>이름</th><th>신청일</th><th>처리</th></tr>
+            </thead>
+            <tbody id="pendingUsersTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
       </div>
     </div>
   </div>
@@ -989,7 +1050,12 @@ async function doLogin() {
     });
     afterLogin(user);
   } catch(e) {
-    errEl.textContent = (e.data && e.data.error) || '로그인 실패';
+    const msg = (e.data && e.data.error) || '로그인 실패';
+    if (msg === 'PENDING') {
+      errEl.textContent = '가입 승인 대기 중입니다. 운영자 승인 후 로그인 가능합니다.';
+    } else {
+      errEl.textContent = msg;
+    }
     errEl.classList.remove('d-none');
   }
 }
@@ -1004,15 +1070,14 @@ async function doRegister() {
   errEl.classList.add('d-none');
 
   if (!userId || !userNm || !userPwd) { errEl.textContent = '모든 항목을 입력하세요.'; errEl.classList.remove('d-none'); return; }
+  if (!/^[a-zA-Z0-9]+$/.test(userId)) { errEl.textContent = '사번은 영문+숫자 조합만 가능합니다.'; errEl.classList.remove('d-none'); return; }
   if (userPwd !== userPwd2) { errEl.textContent = '비밀번호가 일치하지 않습니다.'; errEl.classList.remove('d-none'); return; }
+  if (!document.getElementById('regAgree').checked) { errEl.textContent = '개인정보 수집·이용에 동의해 주세요.'; errEl.classList.remove('d-none'); return; }
 
   try {
     await api('/api/auth?action=register', { method:'POST', body: JSON.stringify({userId, userNm, userPwd}) });
-    alert(`${userNm}님, 가입이 완료되었습니다!\n로그인해 주세요.`);
-    document.getElementById('loginId').value = userId;
+    alert(`${userNm}님, 가입 신청이 완료되었습니다!\n운영자 승인 후 로그인 가능합니다.`);
     switchAuth('login');
-    document.querySelector('#authTab .nav-link').classList.add('active');
-    document.querySelectorAll('#authTab .nav-link')[1].classList.remove('active');
   } catch(e) {
     errEl.textContent = (e.data && e.data.error) || '가입 실패';
     errEl.classList.remove('d-none');
@@ -1198,14 +1263,21 @@ async function loadDashLunch() {
     if (summary.length === 0) {
       html += '<p class="text-muted small text-center py-2">아직 투표가 없습니다</p>';
     } else {
-      html += summary.slice(0,3).map(v => `
-        <div class="mb-2">
+      // summary key 기반으로 집계 (lunch API 형식: {key, count})
+      const maxCnt = Math.max(...summary.map(v => v.count), 1);
+      html += summary.slice(0,3).map(v => {
+        const label = v.key === 'NOT_EATING' ? '🚫 안먹음'
+                    : v.key.startsWith('CUSTOM:') ? v.key.slice(7)
+                    : v.key; // menuId — 이름 없으면 ID 표시
+        const pct = Math.round(v.count / maxCnt * 100);
+        return `<div class="mb-2">
           <div class="d-flex justify-content-between small mb-1">
-            <span>${escHtml(v.menuNm)}</span>
-            <span class="fw-bold ${v.isMyVote ? 'text-primary' : ''}">${v.voteCount}표${v.isMyVote ? ' ✓' : ''}</span>
+            <span>${escHtml(label)}</span>
+            <span class="fw-bold">${v.count}표</span>
           </div>
-          <div class="progress"><div class="progress-bar bg-primary" style="width:${v.percent}%"></div></div>
-        </div>`).join('');
+          <div class="progress"><div class="progress-bar bg-primary" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
     }
     el.innerHTML = html;
   } catch(e) {
@@ -1419,18 +1491,17 @@ async function loadAttendDetail(postId, title) {
     document.getElementById('attendDetailTitle').textContent = title + ' 참석자 현황';
     const tbody = document.getElementById('attendDetailTable');
     if (!list || list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">투표 데이터 없음</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">투표 데이터 없음</td></tr>';
     } else {
       tbody.innerHTML = list.map(a => `
         <tr>
           <td>${escHtml(a.userNm||a.userId)}</td>
           <td>${escHtml(a.userId)}</td>
           <td>${a.status==='Y' ? '<span class="badge badge-attend">참석</span>' : '<span class="badge badge-absent">불참</span>'}</td>
-          <td class="text-muted small">${fmtDtFull(a.voteDt)}</td>
+          <td class="text-muted small">${fmtDtFull(a.regDt||a.voteDt)}</td>
         </tr>`).join('');
     }
-    document.getElementById('attendDetailCard').style.display = '';
-    document.getElementById('attendDetailCard').scrollIntoView({behavior:'smooth', block:'nearest'});
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('attendDetailModal')).show();
   } catch(e) {}
 }
 
@@ -1848,16 +1919,25 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
   }
   const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
   const { totalUsers, attendMap } = summary;
-  el.innerHTML = '<div class="cop-card">' + posts.map((p, i) => {
+  // 최근 날짜순 정렬
+  const sorted = [...posts].sort((a,b) => new Date(b.meetingDt||b.regDt) - new Date(a.meetingDt||a.regDt));
+  const total = sorted.length;
+  el.innerHTML = '<div class="cop-card">' + sorted.map((p, i) => {
     const attendCount = attendMap[p.postId] || 0;
     const pct = totalUsers > 0 ? Math.round(attendCount / totalUsers * 100) : 0;
     const barColor = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#64748b';
+    const seq = total - i; // 최신=total회차
+    const PREVIEW = 120;
+    const content = p.content || '';
+    const isLong = content.length > PREVIEW;
+    const preview = escHtml(content.substring(0, PREVIEW));
+    const full = escHtml(content);
     return `
     <div class="border rounded-3 p-3 mb-3">
       <div class="d-flex align-items-start justify-content-between">
-        <div style="flex:1;">
+        <div style="flex:1;min-width:0;">
           <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-            <span class="badge ${i===0?'bg-primary':'bg-secondary'}">${posts.length-i}회차</span>
+            <span class="badge ${i===0?'bg-primary':'bg-secondary'}">${seq}회차</span>
             <span class="text-muted small">${p.meetingDt ? fmtDt(p.meetingDt) : fmtDt(p.regDt)}</span>
             <span style="font-size:.78rem;color:#94a3b8;margin-left:auto;">
               <i class="bi bi-people-fill me-1" style="color:${barColor};"></i>
@@ -1867,7 +1947,15 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
             </span>
           </div>
           <h6 class="fw-bold mb-1">${escHtml(p.title)}</h6>
-          <p class="text-muted small mb-0" style="white-space:pre-wrap;">${escHtml((p.content||'').substring(0,100))}${(p.content||'').length>100?'...':''}</p>
+          <div class="text-muted small archive-content-wrap" style="white-space:pre-wrap;">
+            <span class="archive-preview-${p.postId}">${preview}${isLong ? '...' : ''}</span>
+            ${isLong ? `<span class="archive-full-${p.postId}" style="display:none;">${full}</span>` : ''}
+          </div>
+          ${isLong ? `
+          <button class="btn btn-link btn-sm p-0 mt-1" style="font-size:.78rem;color:#0059D6;"
+            onclick="toggleArchiveContent(${p.postId}, this)">
+            <i class="bi bi-chevron-down me-1"></i>더보기
+          </button>` : ''}
         </div>
         ${isAdmin ? `
         <div class="d-flex gap-1 flex-column flex-sm-row ms-2">
@@ -1877,6 +1965,17 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
       </div>
     </div>`;
   }).join('') + '</div>';
+}
+
+function toggleArchiveContent(postId, btn) {
+  const preview = document.querySelector(`.archive-preview-${postId}`);
+  const full = document.querySelector(`.archive-full-${postId}`);
+  const isExpanded = full.style.display !== 'none';
+  preview.style.display = isExpanded ? '' : 'none';
+  full.style.display = isExpanded ? 'none' : '';
+  btn.innerHTML = isExpanded
+    ? '<i class="bi bi-chevron-down me-1"></i>더보기'
+    : '<i class="bi bi-chevron-up me-1"></i>접기';
 }
 
 function showArchiveForm(post) {
@@ -2017,7 +2116,7 @@ async function startEditPost(postId) {
     document.getElementById('editPostId').value = postId;
     document.getElementById('writeTitle').value = p.title;
     document.getElementById('writeContent').value = p.content || '';
-    document.getElementById('fileInputArea').style.display = 'none'; // 수정 시 파일 업로드 숨김
+    document.getElementById('fileInputArea').style.display = ''; // 수정 시에도 파일 첨부 허용
     document.getElementById('boardList').style.display   = 'none';
     document.getElementById('boardDetail').style.display = 'none';
     document.getElementById('boardWrite').style.display  = '';
@@ -2037,12 +2136,10 @@ async function submitPost() {
     } else {
       saved = await api('/api/posts', { method:'POST', body: JSON.stringify(body) });
     }
-    // 파일 업로드 (신규 글쓰기 시만)
-    if (!postId && saved && saved.postId) {
-      const fileInput = document.getElementById('writeFiles');
-      if (fileInput.files.length > 0) {
-        await uploadFiles(saved.postId, fileInput.files);
-      }
+    // 파일 업로드 (신규 + 수정 모두)
+    const fileInput = document.getElementById('writeFiles');
+    if (fileInput.files.length > 0 && saved && saved.postId) {
+      await uploadFiles(saved.postId, fileInput.files);
     }
     backToList();
     loadBoard();
@@ -2130,32 +2227,77 @@ async function loadMembers() {
   try {
     const users = await api('/api/users');
     const tbody = document.getElementById('membersTable');
-    if (!users || users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">멤버 없음</td></tr>';
-      return;
+    const pending = (users||[]).filter(u => u.status === 'PENDING');
+    const active  = (users||[]).filter(u => u.status !== 'PENDING');
+
+    // 승인 대기 배지
+    const btn = document.getElementById('btnPendingUsers');
+    if (btn) {
+      if (pending.length > 0) {
+        btn.style.display = '';
+        btn.textContent = `승인 대기 ${pending.length}명`;
+      } else {
+        btn.style.display = 'none';
+      }
     }
-    tbody.innerHTML = users.map(u => {
-      const isMe = currentUser && u.userId === currentUser.userId;
-      const isAdmin = u.userRole === 'ADMIN';
-      return `<tr>
-        <td>${escHtml(u.userId)}</td>
-        <td><strong>${escHtml(u.userNm)}</strong>${isMe ? ' <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.68rem;">나</span>' : ''}</td>
-        <td>${isAdmin ? '<span class="badge bg-primary">운영자</span>' : '<span class="badge bg-secondary">멤버</span>'}</td>
-        <td class="text-muted small">${fmtDt(u.regDt)}</td>
-        <td>${isMe ? '<span class="text-muted small">-</span>' : `
-          <div class="d-flex gap-1">
-            <button class="btn btn-outline-${isAdmin ? 'secondary' : 'primary'} btn-sm" style="font-size:.75rem;"
-              onclick="toggleRole('${u.userId}','${isAdmin ? 'USER' : 'ADMIN'}')">
-              ${isAdmin ? '멤버로' : '운영자로'}
-            </button>
-            <button class="btn btn-outline-danger btn-sm" style="font-size:.75rem;" onclick="deleteMember('${u.userId}','${escHtml(u.userNm)}')">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>`}
-        </td>
-      </tr>`;
-    }).join('');
+
+    if (!active || active.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">멤버 없음</td></tr>';
+    } else {
+      tbody.innerHTML = active.map(u => {
+        const isMe = currentUser && u.userId === currentUser.userId;
+        const isAdmin = u.userRole === 'ADMIN';
+        return `<tr>
+          <td>${escHtml(u.userId)}</td>
+          <td><strong>${escHtml(u.userNm)}</strong>${isMe ? ' <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.68rem;">나</span>' : ''}</td>
+          <td>${isAdmin ? '<span class="badge bg-primary">운영자</span>' : '<span class="badge bg-secondary">멤버</span>'}</td>
+          <td class="text-muted small">${fmtDt(u.regDt)}</td>
+          <td>${isMe ? '<span class="text-muted small">-</span>' : `
+            <div class="d-flex gap-1">
+              <button class="btn btn-outline-${isAdmin ? 'secondary' : 'primary'} btn-sm" style="font-size:.75rem;"
+                onclick="toggleRole('${u.userId}','${isAdmin ? 'USER' : 'ADMIN'}')">
+                ${isAdmin ? '멤버로' : '운영자로'}
+              </button>
+              <button class="btn btn-outline-danger btn-sm" style="font-size:.75rem;" onclick="deleteMember('${u.userId}','${escHtml(u.userNm)}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>`}
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // 승인 대기 모달 테이블
+    const ptbody = document.getElementById('pendingUsersTable');
+    if (ptbody) {
+      if (pending.length === 0) {
+        ptbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">대기 중인 가입 신청이 없습니다</td></tr>';
+      } else {
+        ptbody.innerHTML = pending.map(u => `<tr>
+          <td>${escHtml(u.userId)}</td>
+          <td>${escHtml(u.userNm)}</td>
+          <td class="text-muted small">${fmtDt(u.regDt)}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <button class="btn btn-success btn-sm" style="font-size:.75rem;" onclick="approveUser('${u.userId}')">승인</button>
+              <button class="btn btn-outline-danger btn-sm" style="font-size:.75rem;" onclick="deleteMember('${u.userId}','${escHtml(u.userNm)}')"><i class="bi bi-trash"></i></button>
+            </div>
+          </td>
+        </tr>`).join('');
+      }
+    }
   } catch(e) {}
+}
+
+async function approveUser(userId) {
+  try {
+    await api(`/api/users?id=${userId}&action=approve`, { method: 'PUT' });
+    loadMembers();
+  } catch(e) { alert('승인 실패'); }
+}
+
+function openPendingModal() {
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('pendingUsersModal')).show();
 }
 
 async function toggleRole(userId, newRole) {

@@ -19,6 +19,8 @@ module.exports = async (req, res) => {
     const user = rows[0];
     if (!user || !bcrypt.compareSync(userPwd, user.user_pwd))
       return res.status(401).json({ error: '사번 또는 비밀번호가 올바르지 않습니다.' });
+    if (user.status === 'PENDING')
+      return res.status(403).json({ error: 'PENDING' });
     const token = signToken({ userId: user.user_id, userNm: user.user_nm, userRole: user.user_role });
     setCookie(res, token);
     return res.json({ userId: user.user_id, userNm: user.user_nm, userRole: user.user_role, regDt: user.reg_dt });
@@ -33,10 +35,10 @@ module.exports = async (req, res) => {
     if (exists.rows.length > 0) return res.status(400).json({ error: '이미 사용 중인 사번입니다.' });
     const hashed = bcrypt.hashSync(userPwd, 10);
     await pool.query(
-      'INSERT INTO tb_user(user_id, user_nm, user_pwd, user_role) VALUES($1,$2,$3,$4)',
+      "INSERT INTO tb_user(user_id, user_nm, user_pwd, user_role, status) VALUES($1,$2,$3,$4,'PENDING')",
       [userId, userNm, hashed, 'USER']
     );
-    return res.json({ message: '가입이 완료되었습니다.' });
+    return res.json({ message: 'PENDING' });
   }
 
   // ── logout ─────────────────────────────────────────────────────────
