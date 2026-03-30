@@ -23,9 +23,9 @@ module.exports = async (req, res) => {
       );
       const totalMeetings = posts.length;
 
-      // 전체 회원 목록
+      // 전체 회원 목록 (PENDING 제외)
       const { rows: users } = await pool.query(
-        'SELECT user_id, user_nm, user_role FROM tb_user ORDER BY user_nm'
+        "SELECT user_id, user_nm, user_role FROM tb_user WHERE status='ACTIVE' OR status IS NULL ORDER BY user_nm"
       );
 
       // 전체 출결 데이터
@@ -67,6 +67,18 @@ module.exports = async (req, res) => {
       const map = {};
       rows.forEach(r => { map[r.post_id] = r.status; });
       return res.json(map);
+    }
+
+    // ── 출결 통계 summary (PENDING 제외)
+    if (action === 'summary') {
+      const { rows: userRows } = await pool.query("SELECT COUNT(*) as cnt FROM tb_user WHERE status='ACTIVE' OR status IS NULL");
+      const totalUsers = parseInt(userRows[0].cnt);
+      const { rows } = await pool.query(
+        "SELECT post_id, COUNT(*) FILTER (WHERE status='Y') as attend_count FROM tb_attendance GROUP BY post_id"
+      );
+      const attendMap = {};
+      rows.forEach(r => { attendMap[r.post_id] = parseInt(r.attend_count); });
+      return res.json({ totalUsers, attendMap });
     }
 
     // ── 내 출결 요약 ────────────────────────────────────────────────

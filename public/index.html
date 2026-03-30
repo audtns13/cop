@@ -737,6 +737,14 @@
               <label class="form-label fw-semibold small">내용</label>
               <textarea id="archiveContent" class="form-control" rows="5" placeholder="활동 내용을 입력하세요..."></textarea>
             </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold small"><i class="bi bi-paperclip me-1"></i>파일 첨부 (선택, 여러 개 가능)</label>
+              <input type="file" id="archiveFiles" class="form-control" multiple />
+            </div>
+            <div id="archiveExistingFiles" style="display:none;" class="mb-3">
+              <div class="small fw-semibold text-muted mb-1"><i class="bi bi-paperclip me-1"></i>기존 첨부파일</div>
+              <div id="archiveExistingFileList"></div>
+            </div>
             <div class="d-flex justify-content-end gap-2">
               <button class="btn btn-outline-secondary" onclick="closeArchiveModal()">취소</button>
               <button class="btn btn-primary" onclick="submitArchive()"><i class="bi bi-send me-1"></i>저장</button>
@@ -1076,6 +1084,7 @@ async function doRegister() {
 
   try {
     await api('/api/auth?action=register', { method:'POST', body: JSON.stringify({userId, userNm, userPwd}) });
+    errEl.classList.add('d-none');
     alert(`${userNm}님, 가입 신청이 완료되었습니다!\n운영자 승인 후 로그인 가능합니다.`);
     switchAuth('login');
   } catch(e) {
@@ -1928,7 +1937,7 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
     const barColor = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#64748b';
     const seq = total - i; // 최신=total회차
     const PREVIEW = 120;
-    const content = p.content || '';
+    const content = (p.content || '').replace(/^[\s\t　]+/gm, m => m.replace(/\t|　/g, '').trimStart()); // 들여쓰기 제거
     const isLong = content.length > PREVIEW;
     const preview = escHtml(content.substring(0, PREVIEW));
     const full = escHtml(content);
@@ -1978,13 +1987,44 @@ function toggleArchiveContent(postId, btn) {
     : '<i class="bi bi-chevron-up me-1"></i>접기';
 }
 
-function showArchiveForm(post) {
+async function showArchiveForm(post) {
   document.getElementById('archiveModalTitle').textContent = post ? '활동 기록 수정' : '활동 기록 작성';
   document.getElementById('archivePostId').value = post ? post.postId : '';
   document.getElementById('archiveTitle').value = post ? post.title : '';
   document.getElementById('archiveContent').value = post ? post.content : '';
+  document.getElementById('archiveFiles').value = '';
   if (window._fpArchive) window._fpArchive.setDate(post && post.meetingDt ? post.meetingDt : null, false);
+  // 기존 첨부파일 표시
+  const existEl = document.getElementById('archiveExistingFiles');
+  const listEl  = document.getElementById('archiveExistingFileList');
+  if (post && post.postId) {
+    try {
+      const files = await api('/api/files?postId=' + post.postId);
+      if (files && files.length > 0) {
+        existEl.style.display = '';
+        listEl.innerHTML = files.map(f => `
+          <div class="d-flex align-items-center gap-2 mb-1" id="afile-${f.fileId}">
+            <i class="bi bi-file-earmark text-primary"></i>
+            <span class="small" style="color:#E8EDF5;">${escHtml(f.origNm)}</span>
+            <button class="btn btn-link btn-sm p-0 text-danger ms-auto" style="font-size:.75rem;"
+              onclick="deleteArchiveFile(${f.fileId})"><i class="bi bi-trash"></i></button>
+          </div>`).join('');
+      } else {
+        existEl.style.display = 'none';
+      }
+    } catch(e) { existEl.style.display = 'none'; }
+  } else {
+    existEl.style.display = 'none';
+  }
   document.getElementById('archiveModal').style.display = 'flex';
+}
+
+async function deleteArchiveFile(fileId) {
+  try {
+    await api('/api/files/' + fileId, { method: 'DELETE' });
+    const el = document.getElementById('afile-' + fileId);
+    if (el) el.remove();
+  } catch(e) { alert('파일 삭제 실패'); }
 }
 
 function closeArchiveModal() {
@@ -2015,10 +2055,16 @@ async function submitArchive() {
   const meetingDtStr = meetingDt ? meetingDt.toISOString().slice(0,19) : null;
   const body = { postType:'ACTIVITY', title, content, meetingDt: meetingDtStr };
   try {
+    let saved;
     if (postId) {
-      await api('/api/posts?id=' + postId, { method:'PUT', body: JSON.stringify(body) });
+      saved = await api('/api/posts?id=' + postId, { method:'PUT', body: JSON.stringify(body) });
     } else {
-      await api('/api/posts', { method:'POST', body: JSON.stringify(body) });
+      saved = await api('/api/posts', { method:'POST', body: JSON.stringify(body) });
+    }
+    const fileInput = document.getElementById('archiveFiles');
+    const targetId = (saved && saved.postId) ? saved.postId : postId;
+    if (fileInput.files.length > 0 && targetId) {
+      await uploadFiles(targetId, fileInput.files);
     }
     closeArchiveModal();
     loadArchive();
@@ -2039,9 +2085,10 @@ async function loadBoard() {
     el.innerHTML = posts.map(p => `
       <div class="board-row" style="cursor:pointer;" onclick="openPost(${p.postId})">
         <div class="d-flex justify-content-between align-items-start">
-          <div>
+          <div style="flex:1;min-width:0;">
             <span class="fw-semibold">${escHtml(p.title)}</span>
-            <div class="text-muted small mt-1">${escHtml(p.writerNm||p.writerId)} · ${fmtDt(p.regDt)} · 댓글 <strong>${p.commentCount||0}</strong></div>
+            ${p.fileCount > 0 ? `<i class="bi bi-paperclip text-muted ms-1" style="font-size:.8rem;"></i>` : ''}
+            <div class="text-muted small mt-1">${escHtml(p.writerNm||p.writerId)} · ${fmtDt(p.regDt)} · 댓글 <strong>${p.commentCount||0}</strong>${p.fileCount > 0 ? ` · 파일 <strong>${p.fileCount}</strong>` : ''}</div>
           </div>
         </div>
       </div>`).join('');
@@ -2253,10 +2300,13 @@ async function loadMembers() {
           <td>${isAdmin ? '<span class="badge bg-primary">운영자</span>' : '<span class="badge bg-secondary">멤버</span>'}</td>
           <td class="text-muted small">${fmtDt(u.regDt)}</td>
           <td>${isMe ? '<span class="text-muted small">-</span>' : `
-            <div class="d-flex gap-1">
+            <div class="d-flex gap-1 flex-wrap">
               <button class="btn btn-outline-${isAdmin ? 'secondary' : 'primary'} btn-sm" style="font-size:.75rem;"
                 onclick="toggleRole('${u.userId}','${isAdmin ? 'USER' : 'ADMIN'}')">
                 ${isAdmin ? '멤버로' : '운영자로'}
+              </button>
+              <button class="btn btn-outline-warning btn-sm" style="font-size:.75rem;" onclick="resetPassword('${u.userId}','${escHtml(u.userNm)}')">
+                <i class="bi bi-key"></i>
               </button>
               <button class="btn btn-outline-danger btn-sm" style="font-size:.75rem;" onclick="deleteMember('${u.userId}','${escHtml(u.userNm)}')">
                 <i class="bi bi-trash"></i>
@@ -2314,6 +2364,16 @@ async function deleteMember(userId, userNm) {
     await api(`/api/users?id=${userId}`, { method:'DELETE' });
     loadMembers();
   } catch(e) { alert('삭제 실패'); }
+}
+
+async function resetPassword(userId, userNm) {
+  const newPwd = prompt(`[${userNm}] 새 비밀번호를 입력하세요:`);
+  if (!newPwd) return;
+  if (newPwd.length < 4) { alert('비밀번호는 4자 이상이어야 합니다.'); return; }
+  try {
+    await api(`/api/users?id=${userId}&action=resetpwd`, { method:'PUT', body: JSON.stringify({ newPwd }) });
+    alert(`[${userNm}] 비밀번호가 초기화되었습니다.`);
+  } catch(e) { alert('비밀번호 초기화 실패'); }
 }
 
 // ── 페이지 로드 시 세션 확인

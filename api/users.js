@@ -40,5 +40,16 @@ module.exports = async (req, res) => {
     return res.json({ message: '승인되었습니다.' });
   }
 
+  if (req.method === 'PUT' && action === 'resetpwd') {
+    if (!u || u.userRole !== 'ADMIN') return res.status(403).end();
+    if (!id) return res.status(400).json({ error: 'id 필요' });
+    const bcrypt = require('bcryptjs');
+    const { newPwd } = req.body || {};
+    if (!newPwd) return res.status(400).json({ error: '비밀번호를 입력하세요.' });
+    const hashed = bcrypt.hashSync(newPwd, 10);
+    await pool.query('UPDATE tb_user SET user_pwd=$1 WHERE user_id=$2', [hashed, id]);
+    return res.json({ message: '비밀번호가 초기화되었습니다.' });
+  }
+
   res.status(405).end();
 };
