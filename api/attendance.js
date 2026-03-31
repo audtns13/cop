@@ -96,10 +96,16 @@ module.exports = async (req, res) => {
       return res.json({ attendCount, totalMeetings, attendRate });
     }
 
-    // ── 특정 게시물 출결 목록 ───────────────────────────────────────
+    // ── 특정 게시물 출결 목록 (탈퇴 회원 제외) ─────────────────────
     const q = postId
-      ? 'SELECT * FROM tb_attendance WHERE post_id=$1 ORDER BY reg_dt'
-      : 'SELECT * FROM tb_attendance ORDER BY reg_dt';
+      ? `SELECT a.* FROM tb_attendance a
+         INNER JOIN tb_user u ON a.user_id = u.user_id
+         WHERE a.post_id=$1 AND (u.status='ACTIVE' OR u.status IS NULL)
+         ORDER BY a.reg_dt`
+      : `SELECT a.* FROM tb_attendance a
+         INNER JOIN tb_user u ON a.user_id = u.user_id
+         WHERE (u.status='ACTIVE' OR u.status IS NULL)
+         ORDER BY a.reg_dt`;
     const { rows } = await pool.query(q, postId ? [postId] : []);
     return res.json(rows.map(r => ({
       attId: r.att_id, postId: r.post_id, userId: r.user_id,
