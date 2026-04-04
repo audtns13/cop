@@ -2322,10 +2322,22 @@ async function uploadFiles(postId, files) {
 async function downloadFile(fileId, fileName) {
   try {
     const res = await api('/api/files?fileId=' + fileId);
+    // base64 data URL → Blob → Object URL 변환 (대용량 파일 호환성 향상)
+    const [meta, b64] = res.fileData.split(',');
+    const mime = meta.match(/:(.*?);/)[1];
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mime });
+    const url  = URL.createObjectURL(blob);
+    // DOM에 추가 후 클릭해야 브라우저가 다운로드 실행
     const a = document.createElement('a');
-    a.href = res.fileData;
+    a.href = url;
     a.download = res.origNm || fileName || 'download';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url); // 메모리 해제
   } catch(e) { alert('파일 다운로드 실패'); }
 }
 
