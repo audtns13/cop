@@ -840,11 +840,11 @@
                   <div class="row g-2">
                     <div class="col-6">
                       <label class="form-label small text-muted mb-1">공지 시작일</label>
-                      <input type="date" id="writeNoticeStart" class="form-control form-control-sm" />
+                      <input type="text" id="writeNoticeStart" class="form-control form-control-sm" placeholder="날짜 선택" readonly />
                     </div>
                     <div class="col-6">
                       <label class="form-label small text-muted mb-1">공지 종료일</label>
-                      <input type="date" id="writeNoticeEnd" class="form-control form-control-sm" />
+                      <input type="text" id="writeNoticeEnd" class="form-control form-control-sm" placeholder="날짜 선택" readonly />
                     </div>
                   </div>
                 </div>
@@ -2175,8 +2175,8 @@ function showBoardWrite() {
   // 공지 설정 초기화
   document.getElementById('writeNoticeYn').checked = false;
   document.getElementById('noticeDates').style.display = 'none';
-  document.getElementById('writeNoticeStart').value = '';
-  document.getElementById('writeNoticeEnd').value = '';
+  if (window._fpNoticeStart) { window._fpNoticeStart.clear(); window._fpNoticeStart.set('minDate', null); }
+  if (window._fpNoticeEnd)   { window._fpNoticeEnd.clear();   window._fpNoticeEnd.set('minDate', null); }
   // 관리자에게만 공지 설정 영역 표시
   document.getElementById('noticeSettingArea').style.display =
     (currentUser && currentUser.userRole === 'ADMIN') ? '' : 'none';
@@ -2197,8 +2197,8 @@ async function startEditPost(postId) {
     const isNotice = p.noticeYn === 'Y';
     document.getElementById('writeNoticeYn').checked = isNotice;
     document.getElementById('noticeDates').style.display = isNotice ? '' : 'none';
-    document.getElementById('writeNoticeStart').value = p.noticeStartDt ? p.noticeStartDt.substring(0,10) : '';
-    document.getElementById('writeNoticeEnd').value   = p.noticeEndDt   ? p.noticeEndDt.substring(0,10)   : '';
+    if (window._fpNoticeStart) window._fpNoticeStart.setDate(p.noticeStartDt ? p.noticeStartDt.substring(0,10) : null, false);
+    if (window._fpNoticeEnd)   window._fpNoticeEnd.setDate(p.noticeEndDt   ? p.noticeEndDt.substring(0,10)   : null, false);
     document.getElementById('noticeSettingArea').style.display =
       (currentUser && currentUser.userRole === 'ADMIN') ? '' : 'none';
     document.getElementById('fileInputArea').style.display = ''; // 수정 시에도 파일 첨부 허용
@@ -2728,6 +2728,28 @@ document.addEventListener('DOMContentLoaded', function() {
     enableTime: true,
     dateFormat: 'Y-m-d H:i',
     time_24hr: true,
+    locale: 'ko',
+    allowInput: false,
+    disableMobile: true
+  });
+
+  // 공지 시작일 캘린더
+  window._fpNoticeStart = flatpickr('#writeNoticeStart', {
+    dateFormat: 'Y-m-d',
+    locale: 'ko',
+    allowInput: false,
+    disableMobile: true,
+    onChange: function(dates) {
+      // 시작일 선택 시 종료일 최소값 자동 설정
+      if (dates[0] && window._fpNoticeEnd) {
+        window._fpNoticeEnd.set('minDate', dates[0]);
+      }
+    }
+  });
+
+  // 공지 종료일 캘린더
+  window._fpNoticeEnd = flatpickr('#writeNoticeEnd', {
+    dateFormat: 'Y-m-d',
     locale: 'ko',
     allowInput: false,
     disableMobile: true
