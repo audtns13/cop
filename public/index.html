@@ -2322,23 +2322,39 @@ async function uploadFiles(postId, files) {
 async function downloadFile(fileId, fileName) {
   try {
     const res = await api('/api/files?fileId=' + fileId);
-    // base64 data URL → Blob → Object URL 변환 (대용량 파일 호환성 향상)
-    const [meta, b64] = res.fileData.split(',');
-    const mime = meta.match(/:(.*?);/)[1];
+
+    // file_data가 없는 경우 (마이그레이션 전 업로드된 파일)
+    if (!res || !res.fileData) {
+      alert('파일 데이터가 없습니다.\n해당 파일을 삭제 후 다시 첨부해 주세요.');
+      return;
+    }
+
+    // base64 data URL → Blob → Object URL 변환
+    const commaIdx = res.fileData.indexOf(',');
+    if (commaIdx === -1) throw new Error('파일 형식 오류');
+    const meta = res.fileData.substring(0, commaIdx);
+    const b64  = res.fileData.substring(commaIdx + 1);
+    const mimeMatch = meta.match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+
     const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
+    const bytes  = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     const blob = new Blob([bytes], { type: mime });
     const url  = URL.createObjectURL(blob);
-    // DOM에 추가 후 클릭해야 브라우저가 다운로드 실행
+
+    // DOM에 추가 후 클릭, 100ms 후 정리 (즉시 revoke 시 다운로드 취소됨)
     const a = document.createElement('a');
-    a.href = url;
+    a.href     = url;
     a.download = res.origNm || fileName || 'download';
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url); // 메모리 해제
-  } catch(e) { alert('파일 다운로드 실패'); }
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+
+  } catch(e) {
+    console.error('다운로드 오류:', e);
+    alert('파일 다운로드 실패\n' + (e.message || String(e)));
+  }
 }
 
 async function deleteFile(fileId) {
