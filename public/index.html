@@ -2247,6 +2247,12 @@ function isImageFile(fileName) {
   return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileName || '');
 }
 
+// ── onclick 속성 안에서 안전한 단일따옴표 문자열 생성
+// JSON.stringify는 큰따옴표를 생성해 onclick="" 속성과 충돌하므로 단일따옴표 사용
+function jsStr(s) {
+  return "'" + (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+}
+
 // ── 활동기록 목록용 파일 뱃지 렌더링
 function renderFileBadges(files) {
   if (!files || files.length === 0) return '';
@@ -2255,7 +2261,7 @@ function renderFileBadges(files) {
       const icon = isImageFile(f.origNm) ? 'image' : 'file-earmark';
       return '<span class="badge bg-secondary-subtle text-secondary" ' +
         'style="font-size:.72rem;cursor:pointer;border:1px solid #475569;" ' +
-        'onclick="downloadFile(' + f.fileId + ',' + JSON.stringify(f.origNm) + ')">' +
+        'onclick="downloadFile(' + f.fileId + ',' + jsStr(f.origNm) + ')">' +
         '<i class="bi bi-' + icon + ' me-1"></i>' + escHtml(f.origNm) + '</span>';
     }).join('') + '</div>';
 }
@@ -2272,11 +2278,11 @@ function renderFileItems(files, isOwner) {
       return `<div class="mb-2">
         <img data-fileid="${f.fileId}" src="" alt="${escHtml(nm)}"
              style="max-width:100%;max-height:300px;border-radius:.5rem;display:none;cursor:pointer;"
-             onclick="downloadFile(${f.fileId},${JSON.stringify(nm)})" />
+             onclick="downloadFile(${f.fileId},${jsStr(nm)})" />
         <div class="d-flex align-items-center gap-2 mt-1">
           <i class="bi bi-image text-success"></i>
           <a href="#" class="small text-decoration-none"
-             onclick="downloadFile(${f.fileId},${JSON.stringify(nm)});return false;">${escHtml(nm)}</a>
+             onclick="downloadFile(${f.fileId},${jsStr(nm)});return false;">${escHtml(nm)}</a>
           <span class="text-muted" style="font-size:.75rem;">(${sizeKB}KB)</span>
           ${delBtn}
         </div>
@@ -2285,7 +2291,7 @@ function renderFileItems(files, isOwner) {
     return `<div class="d-flex align-items-center gap-2 mb-1">
       <i class="bi bi-file-earmark text-primary"></i>
       <a href="#" class="small text-decoration-none"
-         onclick="downloadFile(${f.fileId},${JSON.stringify(nm)});return false;">${escHtml(nm)}</a>
+         onclick="downloadFile(${f.fileId},${jsStr(nm)});return false;">${escHtml(nm)}</a>
       <span class="text-muted" style="font-size:.75rem;">(${sizeKB}KB)</span>
       ${delBtn}
     </div>`;
