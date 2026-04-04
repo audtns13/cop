@@ -827,6 +827,29 @@
               <label class="form-label fw-semibold small"><i class="bi bi-paperclip me-1"></i>파일 첨부 (선택, 여러 개 가능)</label>
               <input type="file" id="writeFiles" class="form-control" multiple />
             </div>
+            <!-- 공지 설정 (관리자 전용) -->
+            <div class="mb-3" id="noticeSettingArea" style="display:none;">
+              <div class="border rounded-2 p-3" style="background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.4)!important;">
+                <div class="form-check mb-2">
+                  <input type="checkbox" class="form-check-input" id="writeNoticeYn" onchange="toggleNoticeDates()" />
+                  <label class="form-check-label fw-semibold small" for="writeNoticeYn">
+                    <i class="bi bi-megaphone me-1 text-warning"></i>공지사항으로 등록
+                  </label>
+                </div>
+                <div id="noticeDates" style="display:none;">
+                  <div class="row g-2">
+                    <div class="col-6">
+                      <label class="form-label small text-muted mb-1">공지 시작일</label>
+                      <input type="date" id="writeNoticeStart" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label small text-muted mb-1">공지 종료일</label>
+                      <input type="date" id="writeNoticeEnd" class="form-control form-control-sm" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="d-flex justify-content-end gap-2">
               <button class="btn btn-outline-secondary" onclick="backToList()">취소</button>
               <button class="btn btn-primary" onclick="submitPost()"><i class="bi bi-send me-1"></i>게시하기</button>
@@ -1341,7 +1364,7 @@ async function loadDashAttendStats() {
       tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">데이터 없음</td></tr>';
       return;
     }
-    tbody.innerHTML = stats.slice(0,5).map(s => {
+    tbody.innerHTML = stats.map(s => {
       const isMe = currentUser && s.userId === currentUser.userId;
       const rate = s.attendRate;
       const barColor = rate >= 80 ? 'bg-success' : rate >= 60 ? 'bg-warning' : 'bg-danger';
@@ -1966,6 +1989,7 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
             onclick="toggleArchiveContent(${p.postId}, this)">
             <i class="bi bi-chevron-down me-1"></i>더보기
           </button>` : ''}
+          ${renderFileBadges(p.files)}
         </div>
         ${isAdmin ? `
         <div class="d-flex gap-1 flex-column flex-sm-row ms-2">
@@ -2084,12 +2108,13 @@ async function loadBoard() {
       return;
     }
     el.innerHTML = posts.map(p => `
-      <div class="board-row" style="cursor:pointer;" onclick="openPost(${p.postId})">
+      <div class="board-row${p.noticeYn==='Y' ? ' border-start border-3 border-warning ps-2' : ''}" style="cursor:pointer;" onclick="openPost(${p.postId})">
         <div class="d-flex justify-content-between align-items-start">
           <div style="flex:1;min-width:0;">
+            ${p.noticeYn==='Y' ? '<span class="badge bg-warning text-dark me-1" style="font-size:.72rem;"><i class="bi bi-megaphone-fill me-1"></i>공지</span>' : ''}
             <span class="fw-semibold">${escHtml(p.title)}</span>
             ${p.fileCount > 0 ? `<i class="bi bi-paperclip text-muted ms-1" style="font-size:.8rem;"></i>` : ''}
-            <div class="text-muted small mt-1">${escHtml(p.writerNm||p.writerId)} · ${fmtDt(p.regDt)} · 댓글 <strong>${p.commentCount||0}</strong>${p.fileCount > 0 ? ` · 파일 <strong>${p.fileCount}</strong>` : ''}</div>
+            <div class="text-muted small mt-1">${escHtml(p.writerNm||p.writerId)} · ${fmtDt(p.regDt)} · 조회 ${p.viewCnt||0} · 댓글 <strong>${p.commentCount||0}</strong>${p.fileCount > 0 ? ` · 파일 <strong>${p.fileCount}</strong>` : ''}</div>
           </div>
         </div>
       </div>`).join('');
@@ -2102,7 +2127,7 @@ async function openPost(postId) {
     const p = await api('/api/posts?id=' + postId);
     document.getElementById('detailTitle').textContent = p.title;
     document.getElementById('detailMeta').textContent =
-      (p.writerNm||p.writerId) + ' (' + p.writerId + ') · ' + fmtDtFull(p.regDt);
+      (p.writerNm||p.writerId) + ' (' + p.writerId + ') · ' + fmtDtFull(p.regDt) + ' · 조회 ' + (p.viewCnt||0);
     document.getElementById('detailContent').textContent = p.content || '';
 
     // 첨부파일 표시
@@ -2111,24 +2136,20 @@ async function openPost(postId) {
     const files = p.files || [];
     if (files.length > 0) {
       const isOwner2 = currentUser && (currentUser.userId === p.writerId || currentUser.userRole === 'ADMIN');
-      fileListEl.innerHTML = files.map(f => `
-        <div class="d-flex align-items-center gap-2 mb-1">
-          <i class="bi bi-file-earmark text-primary"></i>
-          <a href="#" class="small text-decoration-none" onclick="downloadFile(${f.fileId},${JSON.stringify(f.origNm||f.orgNm)});return false;">${escHtml(f.origNm||f.orgNm)}</a>
-          <span class="text-muted" style="font-size:.75rem;">(${(f.fileSize/1024).toFixed(1)}KB)</span>
-          ${isOwner2 ? `<button class="btn btn-link btn-sm p-0 text-danger" style="font-size:.75rem;" onclick="deleteFile(${f.fileId})">삭제</button>` : ''}
-        </div>`).join('');
+      fileListEl.innerHTML = renderFileItems(files, isOwner2);
       filesEl.style.display = '';
+      loadInlineImages(filesEl); // 이미지 파일 비동기 로딩
     } else {
       filesEl.style.display = 'none';
     }
 
-    // 수정/삭제 버튼 (본인 or 관리자)
-    const isOwner = currentUser && (currentUser.userId === p.writerId || currentUser.userRole === 'ADMIN');
+    // 수정: 본인만 가능 / 삭제: 본인 또는 관리자 가능
+    const canEdit   = currentUser && currentUser.userId === p.writerId;
+    const canDelete = currentUser && (currentUser.userId === p.writerId || currentUser.userRole === 'ADMIN');
     const actionsEl = document.getElementById('detailActions');
-    actionsEl.innerHTML = isOwner ? `
-      <button class="btn btn-sm btn-outline-secondary" onclick="startEditPost(${postId})"><i class="bi bi-pencil me-1"></i>수정</button>
-      <button class="btn btn-sm btn-outline-danger" onclick="deletePost(${postId})"><i class="bi bi-trash me-1"></i>삭제</button>` : '';
+    actionsEl.innerHTML = (canEdit || canDelete) ? `
+      ${canEdit   ? `<button class="btn btn-sm btn-outline-secondary" onclick="startEditPost(${postId})"><i class="bi bi-pencil me-1"></i>수정</button>` : ''}
+      ${canDelete ? `<button class="btn btn-sm btn-outline-danger"    onclick="deletePost(${postId})"><i class="bi bi-trash me-1"></i>삭제</button>` : ''}` : '';
 
     document.getElementById('boardList').style.display   = 'none';
     document.getElementById('boardDetail').style.display = '';
@@ -2151,6 +2172,14 @@ function showBoardWrite() {
   document.getElementById('writeTitle').value = '';
   document.getElementById('writeContent').value = '';
   document.getElementById('writeFiles').value = '';
+  // 공지 설정 초기화
+  document.getElementById('writeNoticeYn').checked = false;
+  document.getElementById('noticeDates').style.display = 'none';
+  document.getElementById('writeNoticeStart').value = '';
+  document.getElementById('writeNoticeEnd').value = '';
+  // 관리자에게만 공지 설정 영역 표시
+  document.getElementById('noticeSettingArea').style.display =
+    (currentUser && currentUser.userRole === 'ADMIN') ? '' : 'none';
   document.getElementById('fileInputArea').style.display = ''; // 새 글쓰기 시 파일 표시
   document.getElementById('boardList').style.display   = 'none';
   document.getElementById('boardDetail').style.display = 'none';
@@ -2164,6 +2193,14 @@ async function startEditPost(postId) {
     document.getElementById('editPostId').value = postId;
     document.getElementById('writeTitle').value = p.title;
     document.getElementById('writeContent').value = p.content || '';
+    // 공지 설정 복원
+    const isNotice = p.noticeYn === 'Y';
+    document.getElementById('writeNoticeYn').checked = isNotice;
+    document.getElementById('noticeDates').style.display = isNotice ? '' : 'none';
+    document.getElementById('writeNoticeStart').value = p.noticeStartDt ? p.noticeStartDt.substring(0,10) : '';
+    document.getElementById('writeNoticeEnd').value   = p.noticeEndDt   ? p.noticeEndDt.substring(0,10)   : '';
+    document.getElementById('noticeSettingArea').style.display =
+      (currentUser && currentUser.userRole === 'ADMIN') ? '' : 'none';
     document.getElementById('fileInputArea').style.display = ''; // 수정 시에도 파일 첨부 허용
     document.getElementById('boardList').style.display   = 'none';
     document.getElementById('boardDetail').style.display = 'none';
@@ -2176,7 +2213,12 @@ async function submitPost() {
   const title = document.getElementById('writeTitle').value.trim();
   const content = document.getElementById('writeContent').value.trim();
   if (!title) { alert('제목을 입력하세요'); return; }
-  const body = { postType:'FREE', title, content };
+  // 공지 설정 수집
+  const noticeYnEl  = document.getElementById('writeNoticeYn');
+  const noticeYn    = (noticeYnEl && noticeYnEl.checked) ? 'Y' : 'N';
+  const noticeStartDt = document.getElementById('writeNoticeStart')?.value || null;
+  const noticeEndDt   = document.getElementById('writeNoticeEnd')?.value   || null;
+  const body = { postType:'FREE', title, content, noticeYn, noticeStartDt, noticeEndDt };
   try {
     let saved;
     if (postId) {
@@ -2192,6 +2234,74 @@ async function submitPost() {
     backToList();
     loadBoard();
   } catch(e) { alert('저장 실패'); }
+}
+
+// ── 공지사항 날짜 입력 토글
+function toggleNoticeDates() {
+  document.getElementById('noticeDates').style.display =
+    document.getElementById('writeNoticeYn').checked ? '' : 'none';
+}
+
+// ── 파일명으로 이미지 여부 확인
+function isImageFile(fileName) {
+  return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileName || '');
+}
+
+// ── 활동기록 목록용 파일 뱃지 렌더링
+function renderFileBadges(files) {
+  if (!files || files.length === 0) return '';
+  return '<div class="mt-2 d-flex flex-wrap gap-1">' +
+    files.map(f => {
+      const icon = isImageFile(f.origNm) ? 'image' : 'file-earmark';
+      return '<span class="badge bg-secondary-subtle text-secondary" ' +
+        'style="font-size:.72rem;cursor:pointer;border:1px solid #475569;" ' +
+        'onclick="downloadFile(' + f.fileId + ',' + JSON.stringify(f.origNm) + ')">' +
+        '<i class="bi bi-' + icon + ' me-1"></i>' + escHtml(f.origNm) + '</span>';
+    }).join('') + '</div>';
+}
+
+// ── 게시글 상세 파일 아이템 렌더링 (이미지는 인라인 미리보기 지원)
+function renderFileItems(files, isOwner) {
+  return files.map(f => {
+    const sizeKB = ((f.fileSize || 0) / 1024).toFixed(1);
+    const nm     = f.origNm || f.orgNm || '';
+    const delBtn = isOwner
+      ? `<button class="btn btn-link btn-sm p-0 text-danger" style="font-size:.75rem;" onclick="deleteFile(${f.fileId})">삭제</button>`
+      : '';
+    if (isImageFile(nm)) {
+      return `<div class="mb-2">
+        <img data-fileid="${f.fileId}" src="" alt="${escHtml(nm)}"
+             style="max-width:100%;max-height:300px;border-radius:.5rem;display:none;cursor:pointer;"
+             onclick="downloadFile(${f.fileId},${JSON.stringify(nm)})" />
+        <div class="d-flex align-items-center gap-2 mt-1">
+          <i class="bi bi-image text-success"></i>
+          <a href="#" class="small text-decoration-none"
+             onclick="downloadFile(${f.fileId},${JSON.stringify(nm)});return false;">${escHtml(nm)}</a>
+          <span class="text-muted" style="font-size:.75rem;">(${sizeKB}KB)</span>
+          ${delBtn}
+        </div>
+      </div>`;
+    }
+    return `<div class="d-flex align-items-center gap-2 mb-1">
+      <i class="bi bi-file-earmark text-primary"></i>
+      <a href="#" class="small text-decoration-none"
+         onclick="downloadFile(${f.fileId},${JSON.stringify(nm)});return false;">${escHtml(nm)}</a>
+      <span class="text-muted" style="font-size:.75rem;">(${sizeKB}KB)</span>
+      ${delBtn}
+    </div>`;
+  }).join('');
+}
+
+// ── 이미지 파일 비동기 인라인 로딩
+async function loadInlineImages(container) {
+  const imgs = container.querySelectorAll('img[data-fileid]');
+  for (const img of imgs) {
+    try {
+      const res = await api('/api/files?fileId=' + img.getAttribute('data-fileid'));
+      img.src = res.fileData;
+      img.style.display = 'block';
+    } catch(e) { /* 이미지 로드 실패 무시 */ }
+  }
 }
 
 async function uploadFiles(postId, files) {

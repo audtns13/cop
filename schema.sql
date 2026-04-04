@@ -80,6 +80,19 @@ CREATE TABLE IF NOT EXISTS tb_file_info (
 );
 
 -- ============================================================
+-- 마이그레이션: 공지사항 컬럼 추가 (이미 존재하면 무시)
+-- ============================================================
+ALTER TABLE tb_post ADD COLUMN IF NOT EXISTS notice_yn        VARCHAR(1)  DEFAULT 'N';
+ALTER TABLE tb_post ADD COLUMN IF NOT EXISTS notice_start_dt  TIMESTAMP;
+ALTER TABLE tb_post ADD COLUMN IF NOT EXISTS notice_end_dt    TIMESTAMP;
+
+-- 마이그레이션: 첨부파일 Base64 데이터 컬럼 추가 (이미 존재하면 무시)
+ALTER TABLE tb_file_info ADD COLUMN IF NOT EXISTS file_data TEXT;
+
+-- 마이그레이션: 회원 상태 컬럼 추가 (이미 존재하면 무시)
+ALTER TABLE tb_user ADD COLUMN IF NOT EXISTS status VARCHAR(10);
+
+-- ============================================================
 -- 초기 관리자 계정 (EMP001 / 1234)
 -- bcrypt hash of "1234"
 -- ============================================================
