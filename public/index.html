@@ -1100,11 +1100,17 @@ async function sendChatMessage() {
     chatMessages.push({ role: 'model', parts: [{ text: reply }] });
   } catch(e) {
     loadingEl.remove();
-    let errMsg = '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    console.error('[chat] error:', e); // 브라우저 콘솔에 상세 오류 출력
+    let errMsg;
     if (e?.status === 429) {
       errMsg = 'AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.';
     } else if (e?.data?.error) {
-      errMsg = e.data.error; // 서버 실제 오류 메시지 표시
+      errMsg = e.data.error;
+    } else if (e instanceof Error) {
+      // JSON.parse 실패 등 — 실제 메시지 노출 (디버깅용)
+      errMsg = `오류: ${e.message}`;
+    } else {
+      errMsg = `오류 (${e?.status || '?'}): 잠시 후 다시 시도해주세요.`;
     }
     appendChatBubble('ai', errMsg);
   } finally {
