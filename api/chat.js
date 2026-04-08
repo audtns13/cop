@@ -6,8 +6,8 @@ const cors        = require('../lib/cors');
 // Body: { messages: [{ role: 'user'|'model', parts: [{ text }] }] }
 // Response: { reply: string }
 
-// gemini-1.5-flash: 무료 티어 안정 지원 모델 (15RPM / 1500RPD)
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+// gemini-2.5-flash: 무료 티어 안정 지원 모델 (v1beta, generateContent + Function Calling 지원)
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_URL   = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=`;
 
 // ── Gemini에게 제공할 Function 도구 정의
