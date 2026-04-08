@@ -6,7 +6,9 @@ const cors        = require('../lib/cors');
 // Body: { messages: [{ role: 'user'|'model', parts: [{ text }] }] }
 // Response: { reply: string }
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=';
+// gemini-2.0-flash-exp: 무료 티어 공식 지원 모델
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+const GEMINI_URL   = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=`;
 
 // ── Gemini에게 제공할 Function 도구 정의
 const TOOLS = [{
@@ -250,11 +252,17 @@ module.exports = async (req, res) => {
 
     if (!gemRes.ok) {
       const errBody = await gemRes.json().catch(() => ({}));
-      // 429 = 무료 한도 초과
+      // 디버그: Vercel Functions 로그에 실제 오류 기록
+      console.error('[chat.js] Gemini error', gemRes.status, JSON.stringify(errBody));
       if (gemRes.status === 429) {
-        return res.status(429).json({ error: 'AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.' });
+        return res.status(429).json({
+          error: 'AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.',
+          detail: errBody
+        });
       }
-      return res.status(502).json({ error: 'AI 서비스 오류', detail: errBody });
+      // 그 외 오류는 실제 메시지 포함해서 반환 (디버깅용)
+      const gemErrMsg = errBody?.error?.message || JSON.stringify(errBody);
+      return res.status(502).json({ error: `AI 오류 (${gemRes.status}): ${gemErrMsg}` });
     }
 
     const data      = await gemRes.json();

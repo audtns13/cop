@@ -1100,9 +1100,12 @@ async function sendChatMessage() {
     chatMessages.push({ role: 'model', parts: [{ text: reply }] });
   } catch(e) {
     loadingEl.remove();
-    const errMsg = e?.status === 429
-      ? 'AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.'
-      : '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    let errMsg = '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    if (e?.status === 429) {
+      errMsg = 'AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.';
+    } else if (e?.data?.error) {
+      errMsg = e.data.error; // 서버 실제 오류 메시지 표시
+    }
     appendChatBubble('ai', errMsg);
   } finally {
     chatLoading = false;
