@@ -838,8 +838,11 @@
               <textarea id="writeContent" class="form-control" rows="6" placeholder="내용을 입력하세요..."></textarea>
             </div>
             <div class="mb-3" id="fileInputArea">
-              <label class="form-label fw-semibold small"><i class="bi bi-paperclip me-1"></i>파일 첨부 (선택, 여러 개 가능)</label>
+              <label class="form-label fw-semibold small"><i class="bi bi-paperclip me-1"></i>파일 첨부 (최대 5개)</label>
+              <!-- 수정 모드: 기존 첨부파일 목록 -->
+              <div id="existingFileList" class="mb-2" style="display:none;"></div>
               <input type="file" id="writeFiles" class="form-control" multiple />
+              <div id="fileCountHint" class="form-text text-muted"></div>
             </div>
             <!-- 공지 설정 (관리자 전용) -->
             <div class="mb-3" id="noticeSettingArea" style="display:none;">
@@ -2228,6 +2231,11 @@ function showBoardWrite() {
   // 관리자에게만 공지 설정 영역 표시
   document.getElementById('noticeSettingArea').style.display =
     (currentUser && currentUser.userRole === 'ADMIN') ? '' : 'none';
+  // 기존 파일 목록 초기화
+  const existEl = document.getElementById('existingFileList');
+  existEl.innerHTML = '';
+  existEl.style.display = 'none';
+  document.getElementById('fileCountHint').textContent = '최대 5개 업로드 가능';
   document.getElementById('fileInputArea').style.display = ''; // 새 글쓰기 시 파일 표시
   document.getElementById('boardList').style.display   = 'none';
   document.getElementById('boardDetail').style.display = 'none';
@@ -2249,6 +2257,27 @@ async function startEditPost(postId) {
     if (window._fpNoticeEnd)   window._fpNoticeEnd.setDate(p.noticeEndDt   ? p.noticeEndDt.substring(0,10)   : null, false);
     document.getElementById('noticeSettingArea').style.display =
       (currentUser && currentUser.userRole === 'ADMIN') ? '' : 'none';
+    // 기존 첨부파일 목록 복원
+    const existEl   = document.getElementById('existingFileList');
+    const existFiles = p.files || [];
+    if (existFiles.length > 0) {
+      existEl.innerHTML =
+        '<div class="small fw-semibold text-muted mb-1">기존 첨부파일</div>' +
+        existFiles.map(f => `
+          <div class="d-flex align-items-center gap-2 mb-1" id="existFile_${f.fileId}">
+            <i class="bi bi-file-earmark small text-muted"></i>
+            <span class="small flex-grow-1">${escHtml(f.origNm)}</span>
+            <button class="btn btn-link btn-sm p-0 text-danger" onclick="deleteFileInEdit(${f.fileId})">
+              <i class="bi bi-x-lg" style="font-size:.75rem;"></i>
+            </button>
+          </div>`).join('');
+      existEl.style.display = '';
+    } else {
+      existEl.innerHTML = '';
+      existEl.style.display = 'none';
+    }
+    document.getElementById('writeFiles').value = '';
+    updateFileCountHint();
     document.getElementById('fileInputArea').style.display = ''; // 수정 시에도 파일 첨부 허용
     document.getElementById('boardList').style.display   = 'none';
     document.getElementById('boardDetail').style.display = 'none';
@@ -2274,9 +2303,16 @@ async function submitPost() {
     } else {
       saved = await api('/api/posts', { method:'POST', body: JSON.stringify(body) });
     }
-    // 파일 업로드 (신규 + 수정 모두)
+    // 파일 개수 체크 (기존 + 신규 합산 5개 이하)
     const fileInput = document.getElementById('writeFiles');
-    if (fileInput.files.length > 0 && saved && saved.postId) {
+    const existingCount = getExistingFileCount();
+    const newCount = fileInput.files.length;
+    if (existingCount + newCount > 5) {
+      alert(`파일은 최대 5개까지 첨부할 수 있습니다.\n현재 기존 ${existingCount}개 + 신규 ${newCount}개 = ${existingCount + newCount}개`);
+      return;
+    }
+    // 파일 업로드 (신규 + 수정 모두)
+    if (newCount > 0 && saved && saved.postId) {
       await uploadFiles(saved.postId, fileInput.files);
     }
     backToList();
@@ -2411,11 +2447,43 @@ async function downloadFile(fileId, fileName) {
   }
 }
 
+// 기존 파일 수 계산 (수정 모드용)
+function getExistingFileCount() {
+  return document.getElementById('existingFileList').querySelectorAll('[id^="existFile_"]').length;
+}
+
+// 파일 첨부 안내 문구 갱신
+function updateFileCountHint() {
+  const existing  = getExistingFileCount();
+  const remaining = 5 - existing;
+  const hint = document.getElementById('fileCountHint');
+  if (hint) hint.textContent = existing > 0
+    ? `기존 ${existing}개 · 추가 최대 ${remaining}개 가능`
+    : '최대 5개 업로드 가능';
+}
+
+// 수정 모드에서 기존 파일 개별 삭제
+async function deleteFileInEdit(fileId) {
+  if (!confirm('파일을 삭제하시겠습니까?')) return;
+  try {
+    await api('/api/files?fileId=' + fileId, { method:'DELETE' });
+    const el = document.getElementById('existFile_' + fileId);
+    if (el) el.remove();
+    // 남은 파일 없으면 기존 파일 영역 숨김
+    if (getExistingFileCount() === 0) {
+      const existEl = document.getElementById('existingFileList');
+      existEl.innerHTML = '';
+      existEl.style.display = 'none';
+    }
+    updateFileCountHint();
+  } catch(e) { alert('파일 삭제 실패'); }
+}
+
 async function deleteFile(fileId) {
   if (!confirm('파일을 삭제하시겠습니까?')) return;
   try {
-    await api('/api/files/' + fileId, { method:'DELETE' });
-    openPost(currentPostId); // 새로고침
+    await api('/api/files?fileId=' + fileId, { method:'DELETE' });
+    openPost(currentPostId); // 상세 페이지 새로고침
   } catch(e) { alert('파일 삭제 실패'); }
 }
 
