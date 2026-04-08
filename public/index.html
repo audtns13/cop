@@ -357,6 +357,13 @@
     <div class="p-4">
       <div id="popupContent" style="white-space:pre-wrap;font-size:.9rem;"></div>
     </div>
+    <!-- 팝업 첨부파일 목록 -->
+    <div id="popupFiles" class="px-4 pb-2" style="display:none;">
+      <div class="border-top pt-3">
+        <div class="small fw-semibold text-muted mb-2"><i class="bi bi-paperclip me-1"></i>첨부파일</div>
+        <div id="popupFileList"></div>
+      </div>
+    </div>
     <div class="px-4 pb-3 d-flex align-items-center justify-content-between border-top pt-3">
       <div class="form-check mb-0">
         <input type="checkbox" class="form-check-input" id="hideToday" />
@@ -779,7 +786,14 @@
             <button class="btn btn-sm btn-outline-secondary mb-3" onclick="backToList()">
               <i class="bi bi-arrow-left me-1"></i>목록으로
             </button>
-            <h5 class="fw-bold" id="detailTitle">-</h5>
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <h5 class="fw-bold" id="detailTitle">-</h5>
+              <!-- 글자 크기 조정 버튼 -->
+              <div class="d-flex gap-1 flex-shrink-0">
+                <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="adjustFontSize(-1)" title="글자 크기 줄이기"><small>A−</small></button>
+                <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="adjustFontSize(1)"  title="글자 크기 늘리기">A+</button>
+              </div>
+            </div>
             <div class="text-muted small mb-3" id="detailMeta">-</div>
             <div id="detailContent" style="white-space:pre-wrap;"></div>
             <!-- 첨부파일 -->
@@ -1158,11 +1172,8 @@ function afterLogin(user) {
   const initPage = (initHash && pages.includes(initHash)) ? initHash : 'dashboard';
   showPage(initPage, null);
 
-  // 공지 팝업
-  const hideKey = 'cop_hide_' + new Date().toDateString();
-  if (!localStorage.getItem(hideKey)) {
-    loadNoticePopup();
-  }
+  // 공지 팝업 (게시글별 오늘 그만보기는 loadNoticePopup 내부에서 처리)
+  loadNoticePopup();
 }
 
 // ── 공지 팝업
@@ -1170,15 +1181,36 @@ async function loadNoticePopup() {
   try {
     const p = await api('/api/posts?popup=1');
     if (!p) return;
+    // 게시글별 오늘 그만보기 체크
+    const hideKey = 'cop_hide_' + p.postId + '_' + new Date().toDateString();
+    if (localStorage.getItem(hideKey)) return;
+    window._noticePostId = p.postId;
     document.getElementById('popupTitle').textContent   = p.title;
     document.getElementById('popupContent').textContent = p.content;
+    // 첨부파일 표시
+    const filesDiv    = document.getElementById('popupFiles');
+    const fileListDiv = document.getElementById('popupFileList');
+    if (p.files && p.files.length > 0) {
+      fileListDiv.innerHTML = p.files.map(f => `
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <i class="bi bi-file-earmark small text-muted"></i>
+          <span class="small flex-grow-1">${escHtml(f.origNm)}</span>
+          <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+                  onclick="downloadFile(${f.fileId}, ${jsStr(f.origNm)})">
+            <i class="bi bi-download small"></i>
+          </button>
+        </div>`).join('');
+      filesDiv.style.display = '';
+    } else {
+      filesDiv.style.display = 'none';
+    }
     document.getElementById('noticeOverlay').style.display = 'flex';
   } catch(e) { /* 공지 없으면 무시 */ }
 }
 
 function closeNotice() {
-  if (document.getElementById('hideToday').checked) {
-    localStorage.setItem('cop_hide_' + new Date().toDateString(), '1');
+  if (document.getElementById('hideToday').checked && window._noticePostId) {
+    localStorage.setItem('cop_hide_' + window._noticePostId + '_' + new Date().toDateString(), '1');
   }
   document.getElementById('noticeOverlay').style.display = 'none';
 }
@@ -2099,6 +2131,21 @@ async function submitArchive() {
 // ════════════════════════════════
 // ── 자유 게시판
 // ════════════════════════════════
+
+// 글자 크기 조정 (10px ~ 22px, localStorage 저장)
+const BOARD_FONT_KEY = 'cop_board_font';
+function applyBoardFontSize() {
+  const size = parseInt(localStorage.getItem(BOARD_FONT_KEY) || '14', 10);
+  const el = document.getElementById('detailContent');
+  if (el) el.style.fontSize = size + 'px';
+}
+function adjustFontSize(delta) {
+  const cur  = parseInt(localStorage.getItem(BOARD_FONT_KEY) || '14', 10);
+  const next = Math.min(22, Math.max(10, cur + delta));
+  localStorage.setItem(BOARD_FONT_KEY, String(next));
+  applyBoardFontSize();
+}
+
 async function loadBoard() {
   try {
     const posts = await api('/api/posts?type=FREE');
@@ -2129,6 +2176,7 @@ async function openPost(postId) {
     document.getElementById('detailMeta').textContent =
       (p.writerNm||p.writerId) + ' (' + p.writerId + ') · ' + fmtDtFull(p.regDt) + ' · 조회 ' + (p.viewCnt||0);
     document.getElementById('detailContent').textContent = p.content || '';
+    applyBoardFontSize(); // 저장된 글자 크기 적용
 
     // 첨부파일 표시
     const filesEl = document.getElementById('detailFiles');

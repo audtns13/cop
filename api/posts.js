@@ -43,10 +43,15 @@ module.exports = async (req, res) => {
   // ── GET ──────────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
 
-    // 공지 팝업: 유효 기간 내 FREE 공지 최신 1건
+    // 공지 팝업: 유효 기간 내 FREE 공지 최신 1건 (파일 목록 포함)
     if (req.query.popup) {
       const { rows } = await pool.query(
-        `SELECT * FROM tb_post
+        `SELECT p.*,
+           (SELECT COALESCE(JSON_AGG(JSON_BUILD_OBJECT(
+             'fileId',f.file_id,'origNm',f.orig_nm,'fileSize',f.file_size,'regDt',f.reg_dt
+           ) ORDER BY f.reg_dt), '[]'::json)
+           FROM tb_file_info f WHERE f.post_id=p.post_id) AS files
+         FROM tb_post p
          WHERE post_type='FREE' AND notice_yn='Y'
            AND (notice_start_dt IS NULL OR notice_start_dt <= NOW())
            AND (notice_end_dt   IS NULL OR notice_end_dt   >= NOW())
