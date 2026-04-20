@@ -93,6 +93,25 @@ ALTER TABLE tb_file_info ADD COLUMN IF NOT EXISTS file_data TEXT;
 ALTER TABLE tb_user ADD COLUMN IF NOT EXISTS status VARCHAR(10);
 
 -- ============================================================
+-- 마이그레이션: 게시판 카테고리 (이미 존재하면 무시)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tb_board_category (
+  cat_id   SERIAL       PRIMARY KEY,
+  cat_nm   VARCHAR(50)  NOT NULL,
+  sort_ord INTEGER      NOT NULL DEFAULT 0,
+  reg_dt   TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+INSERT INTO tb_board_category (cat_nm, sort_ord) VALUES
+  ('교육자료', 1), ('정보공유', 2), ('과제', 3), ('공지', 4), ('기타', 99)
+ON CONFLICT DO NOTHING;
+
+-- 마이그레이션: 게시글 카테고리 컬럼
+ALTER TABLE tb_post ADD COLUMN IF NOT EXISTS category VARCHAR(50);
+
+-- 마이그레이션: 점심 정산 여부 컬럼
+ALTER TABLE tb_post ADD COLUMN IF NOT EXISTS lunch_settled_yn VARCHAR(1) DEFAULT 'N';
+
+-- ============================================================
 -- 초기 관리자 계정 (EMP001 / 1234)
 -- bcrypt hash of "1234"
 -- ============================================================

@@ -96,6 +96,12 @@ module.exports = async (req, res) => {
     const { rows: allVotes } = await pool.query(
       'SELECT * FROM tb_lunch_vote WHERE meeting_post_id=$1 ORDER BY vote_dt', [meetingPostId]
     );
+    // 정산 여부
+    const { rows: postRows } = await pool.query(
+      'SELECT lunch_settled_yn FROM tb_post WHERE post_id=$1', [meetingPostId]
+    );
+    const settledYn = postRows[0] ? (postRows[0].lunch_settled_yn || 'N') : 'N';
+
     const grouped = {};
     allVotes.forEach(v => {
       const key = v.not_eating_yn === 'Y' ? 'NOT_EATING'
@@ -106,6 +112,7 @@ module.exports = async (req, res) => {
     const summary = Object.entries(grouped).map(([k, cnt]) => ({ key: k, count: cnt }));
     return res.json({
       summary,
+      settledYn,
       allVotes: allVotes.map(r => ({
         voteId: r.vote_id, meetingPostId: r.meeting_post_id, menuId: r.menu_id,
         menuNm: r.menu_nm, userId: r.user_id, userNm: r.user_nm,
@@ -146,6 +153,20 @@ module.exports = async (req, res) => {
       menuNm: r.menu_nm, userId: r.user_id, userNm: r.user_nm,
       notEatingYn: r.not_eating_yn, customYn: r.custom_yn, voteDt: r.vote_dt
     });
+  }
+
+  // ── settle (밥값 정산 여부 토글) ──────────────────────────────────
+  if (resource === 'settle') {
+    if (req.method !== 'PUT') return res.status(405).end();
+    if (!u || u.userRole !== 'ADMIN') return res.status(403).end();
+    const { meetingPostId: mpId, settledYn } = req.body || {};
+    if (!mpId) return res.status(400).json({ error: 'meetingPostId 필요' });
+    const { rows } = await pool.query(
+      'UPDATE tb_post SET lunch_settled_yn=$1 WHERE post_id=$2 RETURNING lunch_settled_yn',
+      [settledYn === 'Y' ? 'Y' : 'N', mpId]
+    );
+    if (!rows[0]) return res.status(404).end();
+    return res.json({ settledYn: rows[0].lunch_settled_yn });
   }
 
   // ── confirm ────────────────────────────────────────────────────────

@@ -25,6 +25,8 @@ function toPost(r) {
     noticeYn:         r.notice_yn       || 'N',
     noticeStartDt:    r.notice_start_dt || null,
     noticeEndDt:      r.notice_end_dt   || null,
+    // 카테고리
+    category:         r.category        || null,
   };
 }
 
@@ -115,19 +117,20 @@ module.exports = async (req, res) => {
   // ── POST (생성) ───────────────────────────────────────────────────────────
   if (req.method === 'POST') {
     if (!u) return res.status(401).json({ error: '로그인 필요' });
-    const { postType, title, content, meetingDt, noticeYn, noticeStartDt, noticeEndDt } = req.body || {};
+    const { postType, title, content, meetingDt, noticeYn, noticeStartDt, noticeEndDt, category } = req.body || {};
     if (!postType || !title) return res.status(400).json({ error: '필수 항목 누락' });
     // 공지 설정은 ADMIN만 가능
     const nYn = (u.userRole === 'ADMIN' && noticeYn === 'Y') ? 'Y' : 'N';
     const { rows } = await pool.query(
       `INSERT INTO tb_post
          (post_type, title, content, writer_id, writer_nm, meeting_dt,
-          notice_yn, notice_start_dt, notice_end_dt)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+          notice_yn, notice_start_dt, notice_end_dt, category)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [postType, title, content || '', u.userId, u.userNm, meetingDt || null,
        nYn,
        nYn === 'Y' ? (noticeStartDt || null) : null,
-       nYn === 'Y' ? (noticeEndDt   || null) : null]
+       nYn === 'Y' ? (noticeEndDt   || null) : null,
+       category || null]
     );
     return res.status(201).json(toPost(rows[0]));
   }
@@ -136,17 +139,18 @@ module.exports = async (req, res) => {
   if (req.method === 'PUT') {
     if (!u) return res.status(401).end();
     if (!id) return res.status(400).json({ error: 'id 필요' });
-    const { title, content, meetingDt, noticeYn, noticeStartDt, noticeEndDt } = req.body || {};
+    const { title, content, meetingDt, noticeYn, noticeStartDt, noticeEndDt, category } = req.body || {};
     const nYn = (u.userRole === 'ADMIN' && noticeYn === 'Y') ? 'Y' : 'N';
     const { rows } = await pool.query(
       `UPDATE tb_post
        SET title=$1, content=$2, meeting_dt=$3, mod_dt=NOW(),
-           notice_yn=$4, notice_start_dt=$5, notice_end_dt=$6
-       WHERE post_id=$7 RETURNING *`,
+           notice_yn=$4, notice_start_dt=$5, notice_end_dt=$6, category=$7
+       WHERE post_id=$8 RETURNING *`,
       [title, content, meetingDt || null,
        nYn,
        nYn === 'Y' ? (noticeStartDt || null) : null,
        nYn === 'Y' ? (noticeEndDt   || null) : null,
+       category || null,
        id]
     );
     return res.json(toPost(rows[0]));

@@ -801,6 +801,25 @@
 
         <!-- 목록 뷰 -->
         <div id="boardList">
+          <!-- 검색바 -->
+          <div class="cop-card mb-3">
+            <div class="row g-2 align-items-center">
+              <div class="col-auto">
+                <select id="boardSearchCat" class="form-select form-select-sm" style="min-width:120px;" onchange="filterBoard()">
+                  <option value="">전체 카테고리</option>
+                </select>
+              </div>
+              <div class="col">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" id="boardSearchKw" class="form-control" placeholder="제목 / 내용 검색" oninput="filterBoard()" />
+                </div>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-outline-secondary btn-sm" onclick="resetBoardSearch()">초기화</button>
+              </div>
+            </div>
+          </div>
           <div class="cop-card">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <div class="cop-card-title mb-0">게시글 목록</div>
@@ -819,7 +838,10 @@
               <i class="bi bi-arrow-left me-1"></i>목록으로
             </button>
             <div class="d-flex align-items-start justify-content-between gap-2">
-              <h5 class="fw-bold" id="detailTitle">-</h5>
+              <div>
+                <span id="detailCategoryBadge"></span>
+                <h5 class="fw-bold d-inline" id="detailTitle">-</h5>
+              </div>
               <!-- 글자 크기 조정 버튼 -->
               <div class="d-flex gap-1 flex-shrink-0">
                 <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="adjustFontSize(-1)" title="글자 크기 줄이기"><small>A−</small></button>
@@ -861,6 +883,12 @@
               <h6 class="fw-bold mb-0" id="boardWriteTitle">새 글 작성</h6>
             </div>
             <input type="hidden" id="editPostId" />
+            <div class="mb-3">
+              <label class="form-label fw-semibold small">카테고리</label>
+              <select id="writeCategory" class="form-select">
+                <option value="">-- 카테고리 선택 --</option>
+              </select>
+            </div>
             <div class="mb-3">
               <label class="form-label fw-semibold small">제목</label>
               <input type="text" id="writeTitle" class="form-control" placeholder="제목을 입력하세요" />
@@ -930,6 +958,21 @@
                 <tr><td colspan="5" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- 게시판 카테고리 관리 (관리자 전용) -->
+        <div class="cop-card mt-3">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="cop-card-title mb-0"><i class="bi bi-tags me-1"></i>게시판 카테고리 관리</div>
+          </div>
+          <div id="adminCatList" class="mb-3">
+            <div class="text-center text-muted py-2"><span class="spinner-border spinner-border-sm"></span></div>
+          </div>
+          <!-- 카테고리 추가 폼 -->
+          <div class="d-flex gap-2 align-items-center">
+            <input type="text" id="newCatNm" class="form-control form-control-sm" placeholder="새 카테고리명" style="max-width:180px;" />
+            <button class="btn btn-primary btn-sm" onclick="addCategory()"><i class="bi bi-plus me-1"></i>추가</button>
           </div>
         </div>
       </div>
@@ -1029,6 +1072,8 @@
 let currentUser = null;
 let currentPostId = null; // 게시판 현재 열린 글
 let allActivityPosts = []; // 활동기록 캐시
+let allBoardPosts    = []; // 게시판 캐시 (검색 필터용)
+let boardCategories  = []; // 게시판 카테고리 목록
 
 // ── AI 도우미
 // ── 로고 fallback
@@ -1370,7 +1415,7 @@ function showPage(name, linkEl) {
   if (name === 'attendance') loadAttendance();
   if (name === 'lunch')      loadLunch();
   if (name === 'archive')    loadArchive();
-  if (name === 'members')    loadMembers();
+  if (name === 'members')    { loadMembers(); loadAdminCategories(); }
 }
 
 // ── 사이드바 (모바일)
@@ -1409,7 +1454,7 @@ async function loadDashCounts() {
     if (upcoming.length > 0) {
       const next = upcoming[0];
       const diff = Math.ceil((new Date(next.meetingDt) - new Date()) / (1000*60*60*24));
-      document.getElementById('heroDday').textContent = diff === 0 ? 'D-Day' : 'D-' + diff;
+      document.getElementById('heroDday').textContent = diff <= 1 ? 'D-Day' : 'D-' + diff;
       const d = new Date(next.meetingDt);
       const days = ['일','월','화','수','목','금','토'];
       document.getElementById('heroDdayDate').textContent =
@@ -1595,7 +1640,7 @@ function renderAttendPosts(posts) {
     const isPast = dDay !== null && dDay < 0;
     const dDayBadge = dDay === null ? '' :
       isPast ? '<span class="badge bg-secondary">완료</span>' :
-      dDay === 0 ? '<span class="badge bg-danger">D-Day</span>' :
+      dDay <= 1 ? '<span class="badge bg-danger">D-Day</span>' :
       `<span class="badge bg-warning text-dark">D-${dDay}</span>`;
     const myStatus = myAttendMap[p.postId];
     const btnYcls = `btn btn-sm flex-fill ${myStatus==='Y' ? 'btn-success' : 'btn-outline-success'}`;
@@ -1720,12 +1765,14 @@ async function loadLunchVotes(meetingPostId) {
   const el = document.getElementById('lunchVoteArea');
   el.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></div>';
   try {
-    const [data, allMenus, post] = await Promise.all([
+    const [data, allMenus, post, allUsers] = await Promise.all([
       api('/api/lunch?resource=votes&meetingPostId=' + meetingPostId),
       api('/api/lunch?resource=menus'),
-      api('/api/posts?id=' + meetingPostId)
+      api('/api/posts?id=' + meetingPostId),
+      api('/api/users').catch(() => [])
     ]);
-    const allVotes = data.allVotes || [];
+    const allVotes  = data.allVotes  || [];
+    const settledYn = data.settledYn || 'N';
     const isAdmin = currentUser && currentUser.userRole === 'ADMIN';
     // 현재 유저 투표 상태
     const myVote = allVotes.find(v => currentUser && v.userId === currentUser.userId);
@@ -1854,13 +1901,22 @@ async function loadLunchVotes(meetingPostId) {
         </button>
       </div>`;
 
-    // ─ 참여 현황
-    if (allVotes.length > 0) {
-      html += `<hr class="my-1" />
-        <div class="small fw-semibold text-muted mb-2 mt-3">
-          <i class="bi bi-people me-1"></i>참여 현황 (${allVotes.length}명)
+    // ─ 참여 현황 + 정산 버튼
+    html += `<hr class="my-1" />
+      <div class="d-flex align-items-center gap-2 mb-2 mt-3 flex-wrap">
+        <div class="small fw-semibold text-muted">
+          <i class="bi bi-people me-1"></i>참여 현황 (${allVotes.filter(v => v.notEatingYn !== 'Y').length}명 식사)
         </div>
-        <div class="d-flex flex-column gap-1">`;
+        ${isAdmin ? `
+        <button class="btn btn-sm ms-auto ${settledYn === 'Y' ? 'btn-success' : 'btn-outline-secondary'}"
+          onclick="settleLunch(${meetingPostId}, '${settledYn === 'Y' ? 'N' : 'Y'}')">
+          <i class="bi bi-${settledYn === 'Y' ? 'check-circle-fill' : 'cash-coin'} me-1"></i>
+          ${settledYn === 'Y' ? '정산완료 ✓' : '정산 미완료'}
+        </button>` : settledYn === 'Y' ? `
+        <span class="badge bg-success ms-auto"><i class="bi bi-check-circle-fill me-1"></i>밥값 정산완료</span>` : ''}
+      </div>`;
+    if (allVotes.length > 0) {
+      html += `<div class="d-flex flex-column gap-1">`;
       allVotes.forEach(v => {
         const isMe = currentUser && v.userId === currentUser.userId;
         const choice = v.notEatingYn === 'Y' ? '🚫 안먹음' : escHtml(v.menuNm || '-');
@@ -1873,6 +1929,22 @@ async function loadLunchVotes(meetingPostId) {
           </div>`;
       });
       html += `</div>`;
+    } else {
+      html += `<p class="text-muted small text-center py-2">아직 투표한 멤버가 없습니다</p>`;
+    }
+
+    // ─ 미투표자 목록
+    const votedIds = new Set(allVotes.map(v => v.userId));
+    const activeUsers = (allUsers || []).filter(u => u.status !== 'PENDING');
+    const unvoted = activeUsers.filter(u => !votedIds.has(u.userId));
+    if (unvoted.length > 0) {
+      html += `<div class="mt-3">
+        <div class="small fw-semibold text-muted mb-1"><i class="bi bi-person-dash me-1"></i>미투표자 (${unvoted.length}명)</div>
+        <div class="d-flex flex-wrap gap-1">`;
+      unvoted.forEach(u => {
+        html += `<span class="badge bg-secondary-subtle text-secondary" style="font-size:.78rem;">${escHtml(u.userNm)}</span>`;
+      });
+      html += `</div></div>`;
     }
 
     el.innerHTML = html;
@@ -2120,7 +2192,8 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
           <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
             <span class="badge ${i===0?'bg-primary':'bg-secondary'}">${seq}회차</span>
             <span class="text-muted small">${p.meetingDt ? fmtDt(p.meetingDt) : fmtDt(p.regDt)}</span>
-            <span style="font-size:.78rem;color:#94a3b8;margin-left:auto;">
+            <span style="font-size:.78rem;color:#94a3b8;margin-left:auto;cursor:pointer;"
+              onclick="showArchiveParticipants(${p.postId},'${escHtml(p.title)}')" title="참여자 목록 보기">
               <i class="bi bi-people-fill me-1" style="color:${barColor};"></i>
               <span style="color:${barColor};font-weight:600;">${attendCount}</span>
               <span style="color:#64748b;">/ ${totalUsers}명</span>
@@ -2147,6 +2220,8 @@ function renderArchiveList(posts, summary = { totalUsers: 0, attendMap: {} }) {
       </div>
     </div>`;
   }).join('') + '</div>';
+  // 이미지 파일 비동기 로딩
+  loadInlineImages(document.getElementById('archiveList'));
 }
 
 function toggleArchiveContent(postId, btn) {
@@ -2225,6 +2300,10 @@ async function submitArchive() {
   const content = document.getElementById('archiveContent').value.trim();
   const meetingDt = window._fpArchive ? window._fpArchive.latestSelectedDateObj : null;
   if (!title) { alert('제목을 입력하세요'); return; }
+  // 저장 버튼 로딩 처리
+  const saveBtn = document.querySelector('#archiveModal .btn-primary');
+  const origHtml = saveBtn ? saveBtn.innerHTML : '';
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...'; }
   const meetingDtStr = meetingDt ? meetingDt.toISOString().slice(0,19) : null;
   const body = { postType:'ACTIVITY', title, content, meetingDt: meetingDtStr };
   try {
@@ -2241,12 +2320,139 @@ async function submitArchive() {
     }
     closeArchiveModal();
     loadArchive();
-  } catch(e) { alert('저장 실패'); }
+  } catch(e) {
+    alert('저장 실패');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = origHtml; }
+  }
 }
 
 // ════════════════════════════════
 // ── 자유 게시판
 // ════════════════════════════════
+
+// ── 카테고리 목록 로드 및 select 채우기
+async function loadBoardCategories() {
+  try {
+    const cats = await api('/api/categories');
+    boardCategories = cats || [];
+    // 검색 select 채우기
+    const searchSel = document.getElementById('boardSearchCat');
+    if (searchSel) {
+      searchSel.innerHTML = '<option value="">전체 카테고리</option>' +
+        cats.map(c => `<option value="${escHtml(c.catNm)}">${escHtml(c.catNm)}</option>`).join('');
+    }
+    // 글쓰기 select 채우기
+    const writeSel = document.getElementById('writeCategory');
+    if (writeSel) {
+      writeSel.innerHTML = '<option value="">-- 카테고리 선택 --</option>' +
+        cats.map(c => `<option value="${escHtml(c.catNm)}">${escHtml(c.catNm)}</option>`).join('');
+    }
+    return cats;
+  } catch(e) { return []; }
+}
+
+// ── 게시판 검색/필터
+function filterBoard() {
+  const catVal = (document.getElementById('boardSearchCat')?.value || '').trim();
+  const kwVal  = (document.getElementById('boardSearchKw')?.value  || '').trim().toLowerCase();
+  const filtered = allBoardPosts.filter(p => {
+    const catOk = !catVal || (p.category || '') === catVal;
+    const kwOk  = !kwVal  ||
+      (p.title   || '').toLowerCase().includes(kwVal) ||
+      (p.content || '').toLowerCase().includes(kwVal);
+    return catOk && kwOk;
+  });
+  renderBoardList(filtered);
+}
+
+// ── 검색 초기화
+function resetBoardSearch() {
+  const catSel = document.getElementById('boardSearchCat');
+  const kwEl   = document.getElementById('boardSearchKw');
+  if (catSel) catSel.value = '';
+  if (kwEl)   kwEl.value   = '';
+  renderBoardList(allBoardPosts);
+}
+
+// ── 점심 밥값 정산 토글
+async function settleLunch(meetingPostId, settledYn) {
+  try {
+    await api('/api/lunch?resource=settle', {
+      method: 'PUT',
+      body: JSON.stringify({ meetingPostId, settledYn })
+    });
+    loadLunchVotes(meetingPostId); // 새로고침
+  } catch(e) { alert('정산 처리 실패'); }
+}
+
+// ── 활동기록 참여자 목록 모달
+async function showArchiveParticipants(postId, title) {
+  try {
+    document.getElementById('attendDetailTitle').textContent = escHtml(title) + ' 참석자';
+    const tbody = document.getElementById('attendDetailTable');
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-2"><span class="spinner-border spinner-border-sm"></span></td></tr>';
+    const modal = new bootstrap.Modal(document.getElementById('attendDetailModal'));
+    modal.show();
+    const rows = await api('/api/attendance?postId=' + postId);
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">출결 데이터가 없습니다</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${escHtml(r.userNm || r.userId)}</td>
+        <td class="text-muted">${escHtml(r.userId)}</td>
+        <td>${r.status === 'Y'
+          ? '<span class="badge bg-success">참석</span>'
+          : '<span class="badge bg-danger">불참</span>'}</td>
+        <td class="text-muted small">${r.regDt ? fmtDtFull(r.regDt) : '-'}</td>
+      </tr>`).join('');
+  } catch(e) { alert('참여자 정보를 불러오지 못했습니다'); }
+}
+
+// ── 관리자: 게시판 카테고리 관리
+async function loadAdminCategories() {
+  const el = document.getElementById('adminCatList');
+  if (!el) return;
+  try {
+    const cats = await api('/api/categories');
+    boardCategories = cats || [];
+    if (cats.length === 0) {
+      el.innerHTML = '<p class="text-muted small">등록된 카테고리가 없습니다</p>';
+      return;
+    }
+    el.innerHTML = '<div class="d-flex flex-wrap gap-2">' +
+      cats.map(c =>
+        `<span class="badge bg-secondary-subtle text-secondary d-flex align-items-center gap-1" style="font-size:.85rem;padding:.35rem .6rem;">
+          ${escHtml(c.catNm)}
+          <button class="btn btn-link p-0 text-danger ms-1" style="font-size:.75rem;line-height:1;" onclick="deleteCategory(${c.catId},'${escHtml(c.catNm)}')">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </span>`
+      ).join('') + '</div>';
+  } catch(e) {}
+}
+
+async function addCategory() {
+  const nm = (document.getElementById('newCatNm')?.value || '').trim();
+  if (!nm) { alert('카테고리명을 입력하세요'); return; }
+  try {
+    await api('/api/categories', { method:'POST', body: JSON.stringify({ catNm: nm }) });
+    document.getElementById('newCatNm').value = '';
+    loadAdminCategories();
+    loadBoardCategories(); // select 목록도 갱신
+  } catch(e) { alert('추가 실패'); }
+}
+
+async function deleteCategory(catId, catNm) {
+  if (!confirm(`"${catNm}" 카테고리를 삭제하시겠습니까?`)) return;
+  try {
+    await api('/api/categories?id=' + catId, { method:'DELETE' });
+    loadAdminCategories();
+    loadBoardCategories();
+  } catch(e) { alert('삭제 실패'); }
+}
 
 // 글자 크기 조정 (10px ~ 22px, localStorage 저장)
 const BOARD_FONT_KEY = 'cop_board_font';
@@ -2264,24 +2470,32 @@ function adjustFontSize(delta) {
 
 async function loadBoard() {
   try {
+    // 카테고리 + 게시글 동시 로드
+    boardCategories = await loadBoardCategories();
     const posts = await api('/api/posts?type=FREE');
-    const el = document.getElementById('boardListItems');
-    if (!posts || posts.length === 0) {
-      el.innerHTML = '<p class="text-muted small text-center py-3">게시글이 없습니다. 첫 글을 작성해보세요!</p>';
-      return;
-    }
-    el.innerHTML = posts.map(p => `
+    allBoardPosts = posts || [];
+    renderBoardList(allBoardPosts);
+  } catch(e) {}
+}
+
+function renderBoardList(posts) {
+  const el = document.getElementById('boardListItems');
+  if (!posts || posts.length === 0) {
+    el.innerHTML = '<p class="text-muted small text-center py-3">게시글이 없습니다. 첫 글을 작성해보세요!</p>';
+    return;
+  }
+  el.innerHTML = posts.map(p => `
       <div class="board-row${p.noticeYn==='Y' ? ' border-start border-3 border-warning ps-2' : ''}" style="cursor:pointer;" onclick="openPost(${p.postId})">
         <div class="d-flex justify-content-between align-items-start">
           <div style="flex:1;min-width:0;">
             ${p.noticeYn==='Y' ? '<span class="badge bg-warning text-dark me-1" style="font-size:.72rem;"><i class="bi bi-megaphone-fill me-1"></i>공지</span>' : ''}
+            ${p.category ? `<span class="badge bg-primary-subtle text-primary me-1" style="font-size:.72rem;">${escHtml(p.category)}</span>` : ''}
             <span class="fw-semibold">${escHtml(p.title)}</span>
             ${p.fileCount > 0 ? `<i class="bi bi-paperclip text-muted ms-1" style="font-size:.8rem;"></i>` : ''}
             <div class="text-muted small mt-1">${escHtml(p.writerNm||p.writerId)} · ${fmtDt(p.regDt)} · 조회 ${p.viewCnt||0} · 댓글 <strong>${p.commentCount||0}</strong>${p.fileCount > 0 ? ` · 파일 <strong>${p.fileCount}</strong>` : ''}</div>
           </div>
         </div>
       </div>`).join('');
-  } catch(e) {}
 }
 
 async function openPost(postId) {
@@ -2289,6 +2503,10 @@ async function openPost(postId) {
   try {
     const p = await api('/api/posts?id=' + postId);
     document.getElementById('detailTitle').textContent = p.title;
+    // 카테고리 뱃지 (있으면 제목 앞에 표시)
+    const catBadgeEl = document.getElementById('detailCategoryBadge');
+    if (catBadgeEl) catBadgeEl.innerHTML = p.category
+      ? `<span class="badge bg-primary-subtle text-primary me-2" style="font-size:.75rem;">${escHtml(p.category)}</span>` : '';
     document.getElementById('detailMeta').textContent =
       (p.writerNm||p.writerId) + ' (' + p.writerId + ') · ' + fmtDtFull(p.regDt) + ' · 조회 ' + (p.viewCnt||0);
     document.getElementById('detailContent').textContent = p.content || '';
@@ -2333,6 +2551,7 @@ function backToList() {
 function showBoardWrite() {
   document.getElementById('boardWriteTitle').textContent = '새 글 작성';
   document.getElementById('editPostId').value = '';
+  document.getElementById('writeCategory').value = '';
   document.getElementById('writeTitle').value = '';
   document.getElementById('writeContent').value = '';
   document.getElementById('writeFiles').value = '';
@@ -2360,6 +2579,7 @@ async function startEditPost(postId) {
     const p = await api('/api/posts?id=' + postId);
     document.getElementById('boardWriteTitle').textContent = '글 수정';
     document.getElementById('editPostId').value = postId;
+    document.getElementById('writeCategory').value = p.category || '';
     document.getElementById('writeTitle').value = p.title;
     document.getElementById('writeContent').value = p.content || '';
     // 공지 설정 복원
@@ -2408,7 +2628,8 @@ async function submitPost() {
   const noticeYn    = (noticeYnEl && noticeYnEl.checked) ? 'Y' : 'N';
   const noticeStartDt = document.getElementById('writeNoticeStart')?.value || null;
   const noticeEndDt   = document.getElementById('writeNoticeEnd')?.value   || null;
-  const body = { postType:'FREE', title, content, noticeYn, noticeStartDt, noticeEndDt };
+  const category = document.getElementById('writeCategory')?.value || null;
+  const body = { postType:'FREE', title, content, noticeYn, noticeStartDt, noticeEndDt, category };
   try {
     let saved;
     if (postId) {
@@ -2450,17 +2671,31 @@ function jsStr(s) {
   return "'" + (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
 }
 
-// ── 활동기록 목록용 파일 뱃지 렌더링
+// ── 활동기록 목록용 파일 뱃지 렌더링 (이미지는 img 태그로 인라인 표시)
 function renderFileBadges(files) {
   if (!files || files.length === 0) return '';
-  return '<div class="mt-2 d-flex flex-wrap gap-1">' +
-    files.map(f => {
-      const icon = isImageFile(f.origNm) ? 'image' : 'file-earmark';
-      return '<span class="badge bg-secondary-subtle text-secondary" ' +
+  const imgs  = files.filter(f => isImageFile(f.origNm));
+  const others = files.filter(f => !isImageFile(f.origNm));
+  let html = '';
+  if (imgs.length > 0) {
+    html += '<div class="mt-2 d-flex flex-wrap gap-2">';
+    imgs.forEach(f => {
+      html += `<img data-fileid="${f.fileId}" src="" alt="${escHtml(f.origNm)}"
+        style="max-width:100%;max-height:180px;border-radius:.5rem;display:none;cursor:pointer;border:1px solid #334155;"
+        onclick="downloadFile(${f.fileId},${jsStr(f.origNm)})" />`;
+    });
+    html += '</div>';
+  }
+  if (others.length > 0) {
+    html += '<div class="mt-1 d-flex flex-wrap gap-1">' +
+      others.map(f =>
+        '<span class="badge bg-secondary-subtle text-secondary" ' +
         'style="font-size:.72rem;cursor:pointer;border:1px solid #475569;" ' +
         'onclick="downloadFile(' + f.fileId + ',' + jsStr(f.origNm) + ')">' +
-        '<i class="bi bi-' + icon + ' me-1"></i>' + escHtml(f.origNm) + '</span>';
-    }).join('') + '</div>';
+        '<i class="bi bi-file-earmark me-1"></i>' + escHtml(f.origNm) + '</span>'
+      ).join('') + '</div>';
+  }
+  return html;
 }
 
 // ── 게시글 상세 파일 아이템 렌더링 (이미지는 인라인 미리보기 지원)
